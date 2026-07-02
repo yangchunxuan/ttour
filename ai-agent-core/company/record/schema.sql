@@ -115,7 +115,9 @@ CREATE TABLE IF NOT EXISTS refund_policy (
 CREATE TABLE IF NOT EXISTS funnel_events (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     event_type    TEXT NOT NULL,      -- inquiry/valid/quoted/won
-    lead_id       INTEGER REFERENCES leads(id),
+    -- lead_id 是可选关联，不设硬外键：咨询(inquiry)事件在真实业务里往往
+    -- 还没建成结构化 lead（咨询人数 ≠ lead 数），强制外键会误杀。
+    lead_id       INTEGER,
     amount        INTEGER DEFAULT 0,  -- 成交金额（分），won 才有
     ad_content    TEXT DEFAULT '',
     region        TEXT DEFAULT '',
