@@ -89,7 +89,14 @@ python3 run_agent.py "开 TextEdit 输入 Hello DeepSeek 存到 ~/out/hello.txt"
 | `BROKER_TOKEN` | 两侧 | guest↔broker 共享 bearer token，每次运行轮换 |
 | `BROKER_BASE_URL` | VM | 指向宿主 broker 的 `/v1`，如 `http://192.168.66.1:8899/v1` |
 | `BROKER_BIND` / `BROKER_PORT` / `BROKER_ALLOW_IPS` | 宿主 | broker 绑定地址/端口/放行源 IP |
+| `BROKER_ALLOWED_MODELS` | 宿主 | broker 允许的模型列表，默认 `deepseek-v4-flash,deepseek-v4-pro` |
+| `BROKER_MAX_TOKENS_CAP` / `BROKER_UPSTREAM_TIMEOUT` | 宿主 | broker 单请求 token 上限 / 上游超时 |
+| `BROKER_RATE_PER_MIN` / `BROKER_RUN_CALL_CAP` / `BROKER_RUN_TOKEN_CAP` | 宿主 | broker 每分钟、每次运行调用和 token 熔断 |
+| `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL` | 本地开发 | 仅宿主本地调试 fallback；VM 真跑走 `BROKER_*` |
 | `DEEPSEEK_MODEL` | 两侧 | 默认 `deepseek-v4-flash` |
+
+`launch_app` 默认白名单：TextEdit、Calculator、Finder、Notes、Preview。额外应用只通过
+`MACOS_AGENT_ALLOWED_APPS` 追加；这不是安全边界，只是给模型的 UX 引导。
 
 ---
 
