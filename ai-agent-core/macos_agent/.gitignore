@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+# 审计产物默认落 ~/.macos_agent/runs（VM 内）；若改到仓内也别提交
+runs/

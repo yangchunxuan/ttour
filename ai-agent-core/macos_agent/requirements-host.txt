@@ -1,0 +1,7 @@
+# 宿主 Mac 上只需要 broker（spec §4）。broker.py 用纯标准库
+# （http.server + urllib），无需 openai SDK——这里留空依赖，
+# 只要宿主有 Python 3.11+ 即可跑 `python3 broker.py`。
+#
+# （若你想在宿主上也跑"大脑"做本地开发/联调，可另装：）
+# openai>=1.40
+# python-dotenv>=1.0
