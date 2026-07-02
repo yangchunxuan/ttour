@@ -24,10 +24,12 @@ def _now() -> str:
 
 
 class Database:
-    def __init__(self, path: Optional[Path] = None):
+    def __init__(self, path: Optional[Path] = None, check_same_thread: bool = True):
+        # check_same_thread=False：给 webhook 服务这类「建库线程 ≠ 处理线程」的场景用；
+        # HTTPServer 串行处理请求，无并发写，安全。
         self.path = Path(path) if path else _DEFAULT_DB
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.conn = sqlite3.connect(str(self.path))
+        self.conn = sqlite3.connect(str(self.path), check_same_thread=check_same_thread)
         self.conn.row_factory = sqlite3.Row
         self.conn.execute("PRAGMA foreign_keys = ON")
         self.conn.executescript(_SCHEMA.read_text(encoding="utf-8"))
@@ -87,6 +89,23 @@ class Database:
         self.conn.commit()
         l.id = cur.lastrowid
         return l.id
+
+    def update_lead(self, l: Lead) -> None:
+        """按 id 更新 Lead（多轮对话里需求渐次补全时用）。"""
+        if l.id is None:
+            raise ValueError("update_lead 需要 lead.id")
+        self.conn.execute(
+            "UPDATE leads SET source=?,pax_count=?,ages=?,depart_date=?,duration_days=?,"
+            "cities=?,has_flight=?,has_budget=?,budget_amount=?,special_requests=?,hotel_level=?,"
+            "room_bed_pref=?,guide_need=?,car_need=?,intent=?,convo_summary=?,status=? WHERE id=?",
+            (l.source, l.pax_count, l.ages, l.depart_date, l.duration_days,
+             json.dumps(l.cities, ensure_ascii=False),
+             None if l.has_flight is None else int(l.has_flight),
+             None if l.has_budget is None else int(l.has_budget),
+             l.budget_amount, l.special_requests, l.hotel_level, l.room_bed_pref,
+             l.guide_need, l.car_need, l.intent, l.convo_summary, l.status, l.id),
+        )
+        self.conn.commit()
 
     def get_lead(self, lead_id: int) -> Optional[Lead]:
         row = self.conn.execute("SELECT * FROM leads WHERE id=?", (lead_id,)).fetchone()

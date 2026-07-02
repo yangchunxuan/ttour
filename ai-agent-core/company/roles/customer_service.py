@@ -113,15 +113,23 @@ class CustomerServiceAgent:
         self.db = db
         self.extractor = extractor
 
-    def ingest(self, conversation_text: str, source: str = "") -> dict:
-        """处理一段对话，返回 {lead_id, status, missing, follow_up, fields}。"""
+    def ingest(self, conversation_text: str, source: str = "",
+               lead_id: Optional[int] = None) -> dict:
+        """处理一段对话，返回 {lead_id, status, missing, follow_up, fields}。
+
+        lead_id 为 None → 新建；给了 → 更新既有 Lead（多轮对话渐次补全用）。
+        """
         raw = self.extractor(conversation_text, LEAD_EXTRACTION_SCHEMA)
         fields = raw if isinstance(raw, dict) else {}
         miss = missing_fields(fields)
         lead = build_lead(fields, source)
         lead.status = (LeadStatus.QUALIFIED.value if not miss
                        else LeadStatus.COLLECTING.value)
-        lead_id = self.db.add_lead(lead)
+        if lead_id is None:
+            lead_id = self.db.add_lead(lead)
+        else:
+            lead.id = lead_id
+            self.db.update_lead(lead)
         return {
             "lead_id": lead_id,
             "status": lead.status,
