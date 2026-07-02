@@ -132,3 +132,19 @@ CREATE TABLE IF NOT EXISTS pricing_strategy (
     value         TEXT NOT NULL,
     note          TEXT DEFAULT ''
 );
+
+-- 供应商下单记录（V2 报价流程第四阶段「客户支付定金后公司开始正式预订资源」）
+-- 🔴 创建=计划(pending)；真下单(confirmed)要定金已付 + 人审（占真库存/产生成本）
+CREATE TABLE IF NOT EXISTS bookings (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    quote_id      INTEGER NOT NULL REFERENCES quotes(id),
+    order_id      INTEGER REFERENCES orders(id),
+    price_book_id INTEGER NOT NULL REFERENCES price_book(id),
+    supplier_id   INTEGER NOT NULL REFERENCES suppliers(id),
+    city          TEXT NOT NULL,
+    resource_type TEXT NOT NULL,
+    qty           INTEGER NOT NULL DEFAULT 1,
+    cost          INTEGER NOT NULL,
+    status        TEXT NOT NULL DEFAULT 'pending', -- pending/confirmed/cancelled
+    created_at    TEXT NOT NULL
+);
