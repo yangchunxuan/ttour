@@ -1,0 +1,11 @@
+# VM guest 内依赖（spec §4）。装在 VM 的 Python 3.11+ 里。
+# 授权是授给"从哪个程序启动"的签名二进制——换 Python 安装会作废 TCC 授权
+# （spec §3），所以定好从 Terminal.app（或签名 .app 壳）启动后别再换解释器。
+pyobjc-core>=10
+pyobjc-framework-Cocoa>=10
+pyobjc-framework-Quartz>=10
+pyobjc-framework-ApplicationServices>=10
+openai>=1.40
+python-dotenv>=1.0
+rich>=13
+pillow>=10
