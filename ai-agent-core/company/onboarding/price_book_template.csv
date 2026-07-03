@@ -1,0 +1,6 @@
+supplier_name,city,resource_type,spec,date_start,date_end,cost_yuan,service_score,stability,price_level,currency,source
+# 下面这行是示例，删掉换成你的真实数据。resource_type 只能是 hotel/car/guide/ticket/dmc/transport
+# spec 可留空，或写 star=5;bed=大床 这种。cost_yuan=成本(人民币元)。分数 1-5，可留空(默认3)
+北京XX酒店,北京,hotel,star=5;bed=大床,2026-09-01,2026-12-31,800,4,4,3,CNY,示例
+北京XX地接,北京,transport,,2026-09-01,2026-12-31,550,4,3,3,CNY,示例
+西安XX酒店,西安,hotel,star=5,2026-09-01,2026-12-31,650,4,4,3,CNY,示例

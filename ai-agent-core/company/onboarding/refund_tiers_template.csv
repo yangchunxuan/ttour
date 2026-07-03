@@ -1,0 +1,8 @@
+resource_type,days_before,refund_pct,note
+# 你自述「需要完善退改政策：距离日期相差多少天退款是多少」——这就是那张表，你来填数字。
+# resource_type: hotel/car/guide/ticket/dmc/transport（酒店按天数分档；其余按各自供应商政策）
+# days_before=距入住/使用还有几天；refund_pct=退款百分比(0-100)。一个资源类型可多行分档。
+# 示例（数字你自己定，删掉换成真实政策）：
+hotel,15,100,15天以上可全退（资源可取消，成本压力小）
+hotel,7,50,7-15天退一半（公司承担部分成本）
+hotel,0,0,7天内不退
