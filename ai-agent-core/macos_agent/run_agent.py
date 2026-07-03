@@ -137,6 +137,18 @@ def _preflight() -> None:
     for w in weak_isolation_warnings():
         sys.stderr.write(f"⚠️  [§4A 隔离警告，best-effort，非硬门] {w}\n")
 
+    # 4) 配置自检（macos/preflight.py）——代码级一致性是硬失败（破了 agent 必然
+    #    malfunction，早退出好过跑到一半神秘卡死）；应用/AX 是软警告。
+    from macos import preflight
+    checks = preflight.run()
+    sys.stderr.write(preflight.format_report(checks) + "\n")
+    hard = preflight.hard_failures(checks)
+    if hard:
+        sys.stderr.write(
+            "\n[REFUSED] 配置自检有硬失败（上面 ❌）——先修配置再跑。\n"
+        )
+        raise SystemExit(5)
+
 
 async def _run(goal: str, max_steps: int, default_app: str | None) -> int:
     base_url = os.getenv("BROKER_BASE_URL", "http://127.0.0.1:8899/v1")
@@ -197,7 +209,13 @@ def main() -> int:
     parser.add_argument("--max-steps", type=int, default=20)
     parser.add_argument("--app", default=None,
                         help="起点应用（会在开跑前带到前台，恢复时也用它）")
+    parser.add_argument("--check", action="store_true",
+                        help="只跑配置自检（macos/preflight）并退出——off-VM 也能跑，不触发安全硬门")
     args = parser.parse_args()
+
+    if args.check:
+        from macos import preflight
+        return preflight.main()
 
     _preflight()  # 硬门：不过直接退出
 

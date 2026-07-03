@@ -136,6 +136,23 @@ def test_inv_14_flags_path_in_filename_field(tmp_path):
     assert "INV-14" in ids(inv.check_inv_14(tmp_path))
 
 
+def test_inv_15_flags_allowlisted_key_without_keycode(tmp_path):
+    write(tmp_path / "macos" / "__init__.py", "")
+    write(tmp_path / "macos" / "actions.py",
+          '"""doc"""\nALLOWED_SINGLE_KEYS = {"enter"}\nALLOWED_COMBOS = {"cmd+zzz"}\n'
+          'def _parse_key(key):\n'
+          '    return {"k": 1} if key == "enter" else None\n')  # cmd+zzz 无键码 → None
+    assert "INV-15" in ids(inv.check_inv_15(tmp_path))
+
+
+def test_inv_15_ok_when_every_key_parses(tmp_path):
+    write(tmp_path / "macos" / "__init__.py", "")
+    write(tmp_path / "macos" / "actions.py",
+          '"""doc"""\nALLOWED_SINGLE_KEYS = {"enter"}\nALLOWED_COMBOS = {"cmd+s"}\n'
+          'def _parse_key(key):\n    return {"k": 1}\n')
+    assert "INV-15" not in ids(inv.check_inv_15(tmp_path))
+
+
 def test_lint_knowledge_flags_broken_link_and_invariant_drift(tmp_path):
     write(tmp_path / "AGENTS.md", "[broken](docs/missing.md)\n")
     write(tmp_path / "docs" / "INVARIANTS.md", "# INV-01 only\n")

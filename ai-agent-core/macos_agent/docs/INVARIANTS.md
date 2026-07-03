@@ -83,3 +83,12 @@ The prompt must never tell the model it can type a full path into the filename
 field: a `/` there triggers Go-to-Folder and the file silently lands elsewhere —
 the "looks successful but didn't save" false pass caught in A2. Mechanically
 locks that lesson so it cannot regress.
+
+## INV-15 Allowlisted Keys Have Keycodes
+
+Every key in `ALLOWED_SINGLE_KEYS` / `ALLOWED_COMBOS` must resolve to a keycode
+via `_parse_key`. Otherwise a key is *authorized but unpressable*: the model is
+told it may use it, tries, and `_parse_key` returns `None` → the executor
+refuses → the agent stalls. `cmd+shift+g` almost shipped this way (`g` had no
+keycode). The runtime twin lives in `macos/preflight.py`
+(`check_whitelist_keycodes`).

@@ -16,7 +16,7 @@ from typing import Iterable
 
 
 ROOT = Path(__file__).resolve().parents[1]
-INVARIANT_IDS = tuple(f"INV-{i:02d}" for i in range(1, 15))
+INVARIANT_IDS = tuple(f"INV-{i:02d}" for i in range(1, 16))
 
 FIXES = {
     "INV-01": "拆分该文件为多个 <400 行模块，或若确因外部约束不能拆，登记 known_exceptions.yaml 并写理由",
@@ -33,6 +33,7 @@ FIXES = {
     "INV-12": "给该模块加一句 docstring 说明它是干嘛的（agent 靠它建立上下文）",
     "INV-13": "系统提示词教模型按的组合键必须都在 press_key 白名单（ALLOWED_COMBOS）里；否则模型会被执行器拒绝、原地卡死。补进白名单或改提示词。",
     "INV-14": "保存到指定目录必须走 cmd+shift+g「前往文件夹」定目录 + 文件名框只填纯文件名（不带 /）；绝不能教模型把路径塞进文件名框（/ 触发 Go-to-Folder → 假成功，A2 教训）。",
+    "INV-15": "press_key 白名单（ALLOWED_SINGLE_KEYS/ALLOWED_COMBOS）里每个键都必须解析得出键码；否则「授权了却按不出」——在 macos/ax.py KEYCODES 补键码（cmd+shift+g 差点栽在 g 没键码上）。",
 }
 
 SKIP_DIRS = {".git", ".pytest_cache", ".mypy_cache", ".venv", "venv", "__pycache__"}
@@ -392,11 +393,26 @@ def check_inv_14(root: Path) -> list[Finding]:
     return out
 
 
+def check_inv_15(root: Path) -> list[Finding]:
+    """press_key 白名单里每个键都必须解析得出键码（授权了却按不出 = 白名单↔键码漂移）。"""
+    try:
+        (actions,) = import_from(root, ["macos.actions"])
+        keys = set(actions.ALLOWED_SINGLE_KEYS) | set(actions.ALLOWED_COMBOS)
+    except Exception as exc:  # noqa: BLE001
+        return [Finding("INV-15", "macos/actions.py", 1, f"无法内省按键白名单：{exc}", FIXES["INV-15"])]
+    out = []
+    for k in sorted(keys):
+        if actions._parse_key(k) is None:
+            out.append(Finding("INV-15", "macos/actions.py", 1,
+                               f"白名单键 {k!r} 解析不出键码（授权了却按不出）", FIXES["INV-15"]))
+    return out
+
+
 CHECKS = [
     check_inv_01, check_inv_02, check_inv_03, check_inv_04,
     check_inv_05, check_inv_06, check_inv_07, check_inv_08,
     check_inv_09, check_inv_10, check_inv_11, check_inv_12,
-    check_inv_13, check_inv_14,
+    check_inv_13, check_inv_14, check_inv_15,
 ]
 
 
