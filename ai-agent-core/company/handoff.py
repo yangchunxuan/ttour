@@ -37,10 +37,11 @@ CREATE TABLE IF NOT EXISTS improvements(
 @dataclass
 class Store:
     path: str
+    check_same_thread: bool = True   # False 给"建库线程≠服务线程"的看板服务用
 
     def __post_init__(self):
         Path(self.path).parent.mkdir(parents=True, exist_ok=True)
-        self.conn = sqlite3.connect(self.path)
+        self.conn = sqlite3.connect(self.path, check_same_thread=self.check_same_thread)
         self.conn.row_factory = sqlite3.Row
         self.conn.executescript(_DDL)
         self.conn.commit()
