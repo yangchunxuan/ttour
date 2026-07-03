@@ -129,6 +129,12 @@ def op_funnel(db: Database) -> dict:
     return {"漏斗": an.funnel_summary(), "投放建议": an.optimization_hints("platform")}
 
 
+def op_market(db: Database) -> dict:
+    """V2 一·3 反馈前端：整体漏斗 + 各维度全阶段拆解 + 可执行预算建议。"""
+    from company.roles.marketing import MarketingAgent
+    return MarketingAgent(db).feedback_report()
+
+
 # ---- CLI 薄壳 ---- #
 def main() -> int:
     ap = argparse.ArgumentParser(description="定制游公司运营控制台")
@@ -139,6 +145,7 @@ def main() -> int:
     for name in ("send", "deposit", "book", "balance"):
         p = sub.add_parser(name); p.add_argument("id", type=int)
     sub.add_parser("funnel")
+    sub.add_parser("market")
     args = ap.parse_args()
 
     db = Database()
@@ -161,6 +168,8 @@ def main() -> int:
         out = op_balance(db, args.id)
     elif args.cmd == "funnel":
         out = op_funnel(db)
+    elif args.cmd == "market":
+        out = op_market(db)
     print(json.dumps(out, ensure_ascii=False, indent=2))
     return 0
 
