@@ -1,0 +1,46 @@
+[
+  {
+    "id": "tour-001",
+    "title": "Classic South China & Mountain City Journey",
+    "durationDays": 7,
+    "durationNights": 6,
+    "cities": ["Guangzhou", "Guilin / Yangshuo", "Chongqing"],
+    "bestFor": "First-time visitors, families, senior travelers",
+    "image": "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=800&q=80",
+    "pdfUrl": "/images/tours/7D广州桂林重庆.pdf",
+    "badge": ""
+  },
+  {
+    "id": "tour-002",
+    "title": "Culture, Avatar Mountains & Modern Shanghai",
+    "durationDays": 9,
+    "durationNights": 8,
+    "cities": ["Guangzhou", "Zhangjiajie", "Shanghai"],
+    "bestFor": "First-time visitors, families, photographers",
+    "image": "https://images.unsplash.com/photo-1537531383496-b57e4c08bf71?w=800&q=80",
+    "pdfUrl": "/images/tours/9D广州张家界上海.pdf",
+    "badge": ""
+  },
+  {
+    "id": "tour-003",
+    "title": "Modern Shanghai, Avatar Mountains & Imperial Beijing",
+    "durationDays": 10,
+    "durationNights": 9,
+    "cities": ["Shanghai", "Zhangjiajie", "Beijing"],
+    "bestFor": "First-time visitors, culture lovers",
+    "image": "https://images.unsplash.com/photo-1538428494232-9c0d8a3ab403?w=800&q=80",
+    "pdfUrl": "/images/tours/10D上海张家界北京.pdf",
+    "badge": ""
+  },
+  {
+    "id": "tour-004",
+    "title": "The Grand China Discovery Journey",
+    "durationDays": 17,
+    "durationNights": 16,
+    "cities": ["Shanghai", "Zhangjiajie", "Chongqing", "Chengdu", "Xi'an", "Beijing"],
+    "bestFor": "Travelers who want the most complete first-time experience",
+    "image": "https://images.unsplash.com/photo-1591715625579-6e3a5f05ac11?w=800&q=80",
+    "pdfUrl": "/images/tours/17D上海张家界重庆成都西安北京.pdf",
+    "badge": "Most Complete"
+  }
+]

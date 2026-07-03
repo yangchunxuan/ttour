@@ -1,0 +1,102 @@
+.tourCard {
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-gray-soft);
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.tourCard:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-lg);
+}
+
+.imgWrap {
+  position: relative;
+  height: 240px;
+}
+
+.imgWrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.duration {
+  position: absolute;
+  bottom: var(--space-4);
+  left: var(--space-4);
+  background: rgba(255,255,255,0.9);
+  color: var(--color-navy);
+  font-family: var(--font-inter);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+}
+
+.badge {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  background: var(--color-gold);
+  color: var(--color-white);
+  font-family: var(--font-inter);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+}
+
+.body {
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+.cities {
+  font-size: var(--fs-xs);
+  color: var(--color-gold);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-2);
+}
+
+.title {
+  font-size: var(--fs-xl);
+  margin-bottom: var(--space-3);
+}
+
+.best {
+  font-size: var(--fs-sm);
+  margin-bottom: var(--space-4);
+}
+
+.price {
+  margin-top: auto;
+  font-family: var(--font-inter);
+  font-weight: 600;
+  color: var(--color-navy);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-gray-soft);
+}
+
+.pdf {
+  display: inline-block;
+  margin-top: var(--space-3);
+  font-size: var(--fs-sm);
+  color: var(--color-gold-light);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.pdf:hover {
+  color: var(--color-navy);
+}

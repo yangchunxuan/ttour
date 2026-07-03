@@ -1,0 +1,220 @@
+/* ============================================================
+   Orient Surprises Travel — Global Styles
+   ============================================================ */
+
+   :root {
+    /* Brand Colors */
+    --color-navy:        #062A5E;
+    --color-navy-dark:   #041e45;
+    --color-navy-light:  #0d3d80;
+    --color-gold:        #B8860B;
+    --color-gold-light:  #C69214;
+    --color-gold-pale:   #f0d98a;
+    --color-ivory:       #F8F5EE;
+    --color-ivory-dark:  #ede9de;
+    --color-white:       #FFFFFF;
+    --color-charcoal:    #1B1D21;
+    --color-gray-soft:   #EEF1F5;
+    --color-gray-mid:    #9aa3b0;
+    --color-gray-dark:   #555a65;
+  
+    /* Font Sizes — fluid clamp scale */
+    --fs-xs:   clamp(0.75rem,  1vw,  0.8rem);
+    --fs-sm:   clamp(0.875rem, 1.2vw, 0.9375rem);
+    --fs-base: clamp(1rem,     1.4vw, 1.0625rem);
+    --fs-md:   clamp(1.125rem, 1.6vw, 1.25rem);
+    --fs-lg:   clamp(1.25rem,  2vw,   1.5rem);
+    --fs-xl:   clamp(1.5rem,   2.5vw, 2rem);
+    --fs-2xl:  clamp(2rem,     3.5vw, 3rem);
+    --fs-3xl:  clamp(2.5rem,   5vw,   4rem);
+    --fs-4xl:  clamp(3rem,     6vw,   5rem);
+  
+    /* Spacing */
+    --space-1:  0.25rem;
+    --space-2:  0.5rem;
+    --space-3:  0.75rem;
+    --space-4:  1rem;
+    --space-5:  1.25rem;
+    --space-6:  1.5rem;
+    --space-8:  2rem;
+    --space-10: 2.5rem;
+    --space-12: 3rem;
+    --space-16: 4rem;
+    --space-20: 5rem;
+    --space-24: 6rem;
+    --space-32: 8rem;
+  
+    /* Layout */
+    --container-max: 1200px;
+    --container-padding: clamp(1rem, 4vw, 2.5rem);
+  
+    /* Borders & Radius */
+    --radius-sm:  4px;
+    --radius-md:  8px;
+    --radius-lg:  16px;
+    --radius-xl:  24px;
+    --radius-full: 9999px;
+  
+    /* Shadows */
+    --shadow-xs:  0 1px 3px rgba(6,42,94,0.08);
+    --shadow-sm:  0 2px 8px rgba(6,42,94,0.10);
+    --shadow-md:  0 4px 20px rgba(6,42,94,0.12);
+    --shadow-lg:  0 8px 40px rgba(6,42,94,0.16);
+    --shadow-xl:  0 16px 60px rgba(6,42,94,0.20);
+  
+    /* Transitions */
+    --transition-fast:   150ms ease;
+    --transition-base:   300ms ease;
+    --transition-slow:   500ms ease;
+  }
+  
+  /* ============================================================
+     2. RESET & BASE
+     ============================================================ */
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+  }
+  
+  body {
+    /* Fonts injected via Next.js variable in layout.js */
+    font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+    font-size: var(--fs-base);
+    line-height: 1.7;
+    color: var(--color-charcoal);
+    background-color: var(--color-white);
+    overflow-x: hidden;
+  }
+  
+  img, video, svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+  
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+  
+  ul, ol {
+    list-style: none;
+  }
+  
+  button {
+    cursor: pointer;
+    border: none;
+    background: none;
+    font-family: inherit;
+  }
+  
+  input, textarea, select {
+    font-family: inherit;
+    font-size: inherit;
+  }
+  
+  /* ============================================================
+     3. TYPOGRAPHY
+     ============================================================ */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-playfair), Georgia, serif;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--color-charcoal);
+  }
+  
+  h1 { font-size: var(--fs-4xl); }
+  h2 { font-size: var(--fs-3xl); }
+  h3 { font-size: var(--fs-2xl); }
+  h4 { font-size: var(--fs-xl); }
+  h5 { font-size: var(--fs-lg); }
+  h6 { font-size: var(--fs-md); }
+  
+  p {
+    font-size: var(--fs-base);
+    line-height: 1.75;
+    color: var(--color-gray-dark);
+  }
+  
+  /* ============================================================
+     4. LAYOUT — CONTAINER
+     ============================================================ */
+  .container {
+    width: 100%;
+    max-width: var(--container-max);
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--container-padding);
+    padding-right: var(--container-padding);
+  }
+  
+  section {
+    padding-top: var(--space-20);
+    padding-bottom: var(--space-20);
+  }
+  
+  /* ============================================================
+     5. UTILITIES
+     ============================================================ */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-family: var(--font-inter), sans-serif;
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: var(--space-3) var(--space-8);
+    border-radius: var(--radius-full);
+    transition: all var(--transition-base);
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  
+  .btn-primary {
+    background: linear-gradient(135deg, var(--color-gold-light), var(--color-gold));
+    color: var(--color-navy);
+    box-shadow: 0 4px 20px rgba(184, 134, 11, 0.35);
+  }
+  
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(184, 134, 11, 0.45);
+  }
+  
+  .btn-outline {
+    border: 2px solid rgba(255,255,255,0.6);
+    color: var(--color-white);
+    background: transparent;
+  }
+  
+  .btn-outline:hover {
+    border-color: var(--color-white);
+    background: rgba(255,255,255,0.1);
+    transform: translateY(-2px);
+  }
+  
+  .bg-light {
+    background-color: var(--color-gray-soft);
+  }
+  
+  .text-center {
+    text-align: center;
+  }
+  
+  .fade-in {
+    animation: fadeIn 0.8s ease-in-out forwards;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }

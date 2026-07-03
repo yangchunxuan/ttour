@@ -1,0 +1,27 @@
+.searchBox {
+  display: flex;
+  align-items: center;
+  background: var(--color-white);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.searchIcon {
+  color: var(--color-gray-mid);
+  margin-right: var(--space-3);
+  flex-shrink: 0;
+}
+
+.searchInput {
+  flex-grow: 1;
+  border: none;
+  outline: none;
+  font-size: var(--fs-base);
+  color: var(--color-charcoal);
+  background: transparent;
+  min-width: 0;
+}

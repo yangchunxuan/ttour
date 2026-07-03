@@ -1,0 +1,97 @@
+.pageHeader {
+  position: relative;
+  padding: var(--space-32) 0 var(--space-20);
+  background-image: url('https://images.unsplash.com/photo-1508804185872-d7badad00f7d?w=1600&q=80');
+  background-size: cover;
+  background-position: center;
+  text-align: center;
+}
+
+.headerOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 42, 94, 0.75);
+}
+
+.headerContent {
+  position: relative;
+  z-index: 1;
+}
+
+.headerContent h1 {
+  font-size: var(--fs-4xl);
+  color: var(--color-white);
+  margin-bottom: var(--space-4);
+}
+
+.headerContent p {
+  color: var(--color-ivory);
+  font-size: var(--fs-lg);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+  background: var(--color-gray-soft);
+  padding: var(--space-6);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-8);
+}
+
+.filterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex-grow: 1;
+  min-width: 200px;
+}
+
+.filterGroup label {
+  font-family: var(--font-inter);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--color-navy);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.select {
+  padding: var(--space-3);
+  border: 1px solid var(--color-gray-mid);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-base);
+  background-color: var(--color-white);
+  outline: none;
+}
+
+.select:focus {
+  border-color: var(--color-navy);
+}
+
+.resultsCount {
+  font-size: var(--fs-sm);
+  color: var(--color-gray-dark);
+  margin-bottom: var(--space-6);
+  font-weight: 500;
+}
+
+.toursGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-8);
+}
+
+.noResults {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: var(--space-16) 0;
+  background: var(--color-gray-soft);
+  border-radius: var(--radius-lg);
+}
+
+.noResults h3 {
+  margin-bottom: var(--space-4);
+}
