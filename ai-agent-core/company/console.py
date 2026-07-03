@@ -89,7 +89,12 @@ def op_send(db: Database, quote_id: int, needs_transport: bool = True) -> dict:
                              deposit_pct=pct, deposit_amount=dep,
                              balance_amount=q["quote_price"] - dep))
     req = CollectionAgent(db).request_deposit(oid)
-    return {"quote_id": quote_id, "order_id": oid, "定金收款单": req["instruction"],
+    from company.roles import disclosures
+    import json as _json
+    commitments = _json.loads(q["commitments"] or "{}")
+    return {"quote_id": quote_id, "order_id": oid,
+            "对客报价话术": disclosures.quote_message(q["quote_price"] / 100, commitments),
+            "定金收款单": req["instruction"],
             "next_gate": f"console deposit {oid}"}
 
 
