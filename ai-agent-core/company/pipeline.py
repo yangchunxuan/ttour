@@ -59,17 +59,33 @@ class CompanyPipeline:
         """把一条对话自动推到底，人审闸门处调 approver。返回完整轨迹。"""
         trace: list[dict] = []
 
-        def step(name, **info):
-            trace.append({"step": name, **info})
-
         # 1) 客服：对话 → Lead
         r = self.cs.ingest(conversation, source=source)
         lead_id = r["lead_id"]
         self.an.record_event("inquiry", lead_id=lead_id, platform=platform, region=region)
-        step("intake", lead_id=lead_id, status=r["status"])
+        trace.append({"step": "intake", "lead_id": lead_id, "status": r["status"]})
         if r["status"] != "qualified":
-            step("need_more_info", missing=r["missing"], follow_up=r["follow_up"])
+            trace.append({"step": "need_more_info", "missing": r["missing"],
+                          "follow_up": r["follow_up"]})
             return {"result": "collecting", "lead_id": lead_id, "trace": trace}
+
+        # 2)~5) 从「已 qualified 的 Lead」接手（也是 SaleSmartly 前门的接续入口）
+        return self.run_from_lead(lead_id, approver, needs_transport=needs_transport,
+                                  platform=platform, region=region, trace=trace)
+
+    def run_from_lead(self, lead_id: int, approver: Callable[[str, dict], bool], *,
+                      needs_transport: bool = True, platform: str = "", region: str = "",
+                      trace: list | None = None) -> dict:
+        """从一条**已 qualified 的 Lead** 接手，跑「计调→报价→收款→下单→尾款→结清」。
+
+        这是前门（SaleSmartly 入站建好 Lead）与后续自主流程的**接续缝**：
+        客服把 Lead 收齐后，运营/收款/供应商 agent 从这里接手，人审闸门不变。
+        """
+        trace = trace if trace is not None else []
+
+        def step(name, **info):
+            trace.append({"step": name, **info})
+
         self.an.record_event("valid", lead_id=lead_id, platform=platform, region=region)
 
         # 2) 计调：Lead + 价格库 → 报价
