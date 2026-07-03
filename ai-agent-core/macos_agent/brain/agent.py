@@ -69,6 +69,8 @@ from .loop_guards import (
     _goal_needs_data,
     _done_result_too_thin,
     _blocked_type_reason,
+    action_kind,
+    needs_verify_before_success,
 )
 
 
@@ -177,6 +179,10 @@ class ReActAgent:
         premature_fail_done_count = 0
         premature_success_done_count = 0
         post_extract_fail_done_count = 0
+        # 「成功前须核验」纪律的状态（loop_guards.needs_verify_before_success）
+        last_mutation_step: Optional[int] = None
+        last_verify_step: Optional[int] = None
+        verify_nudge_count = 0
         final_extracted: Optional[dict] = None
         last_success_extract_sig: Optional[str] = None
         last_success_page_fp: Optional[str] = None
@@ -556,6 +562,29 @@ class ReActAgent:
                 )
                 continue
 
+            # 5b) 「成功前须核验」闸门：改过状态就声称成功、但没核验过真实结果 → 打回一次，
+            #     逼它先查底层真相（别信界面）。依据 Anthropic《Building Effective Agents》
+            #     的环境反馈锚定 + OpenAI《Harness Engineering》的机械化强制。
+            if (
+                name == "done"
+                and _arg_success(args)
+                and verify_nudge_count < 1
+                and needs_verify_before_success(last_mutation_step, last_verify_step)
+            ):
+                verify_nudge_count += 1
+                msg = ("done(success) held: 你改动过状态却还没核验真实结果——"
+                       "先查底层真相再收尾，别信界面")
+                entry["result"] = {"ok": False, "message": msg}
+                entry["result_ok"] = False
+                entry["result_message"] = msg
+                emit(entry)
+                pending_hint = (
+                    "结束前必须先核实真实结果，别只看界面像成功：产出文件→verify_path 查文件"
+                    "真在（存文本可带 contains 核内容）；改了系统状态/别的→run_script 查底层"
+                    "（如 defaults read / ls / cat）；要数据→extract。核实通过后再 done(success=true)。"
+                )
+                continue
+
             # 6) EXECUTE --------------------------------------------------------
             result = await self.execute_fn(self.session, dom_state, action, self.planner)
             entry["result"] = {"ok": result.ok, "message": result.message}
@@ -563,6 +592,15 @@ class ReActAgent:
             entry["result_ok"] = result.ok
             entry["result_message"] = result.message
             emit(entry)
+
+            # 更新「成功前须核验」纪律的状态：只记成功动作。verify_path/extract 记为核验；
+            # 其余改状态动作记为 mutation（wait/scroll/done 中性，不计）。
+            if result.ok:
+                _kind = action_kind(name)
+                if _kind == "verify":
+                    last_verify_step = step
+                elif _kind == "mutation":
+                    last_mutation_step = step
 
             # 有实际进展就清零恢复/拒绝计数：恢复配额只该约束"连续无进展"，
             # 长任务里零散触发几次循环检测不该累积成整单报废。

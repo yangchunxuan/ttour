@@ -414,6 +414,31 @@ def test_run_script_refused_on_real_mac():
     assert res.ok is False
 
 
+# ---- 「成功前须核验」纪律（loop_guards）---- #
+
+def test_action_kind_classifies():
+    from brain.loop_guards import action_kind
+    assert action_kind("verify_path") == "verify"
+    assert action_kind("extract") == "verify"
+    assert action_kind("wait") == "neutral"
+    assert action_kind("scroll") == "neutral"
+    assert action_kind("save_document") == "mutation"
+    assert action_kind("run_script") == "mutation"
+    assert action_kind("type") == "mutation"
+
+
+def test_needs_verify_before_success():
+    from brain.loop_guards import needs_verify_before_success
+    # 没改过任何东西 → 不需要核验（纯读/空任务）
+    assert needs_verify_before_success(None, None) is False
+    # 改了(step3)、之后没核验 → 需要核验
+    assert needs_verify_before_success(3, None) is True
+    # 改了(step3)、核验在更早(step1) → 仍需要核验
+    assert needs_verify_before_success(3, 1) is True
+    # 改了(step3)、核验在之后(step5) → 已核验，放行
+    assert needs_verify_before_success(3, 5) is False
+
+
 def test_workflows_importable_standalone():
     """回归：先 import macos.workflows（不先 import actions）不得循环 import 崩溃。
     全新子进程解释器里验，本进程早已 import 过 actions 掩盖不了它。"""

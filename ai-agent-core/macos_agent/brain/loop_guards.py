@@ -128,6 +128,35 @@ def _arg_success(args: Any) -> bool:
     return bool(value)
 
 
+# ---------------------------------------------------------------------------
+# 「声称成功前须核验」纪律。依据两篇公开工程文章：
+#   * Anthropic《Building Effective Agents》——把 agent 锚定在**环境的真实反馈**上，
+#     别让它只凭自我判断收尾（agent-环境闭环）。
+#   * OpenAI《Harness Engineering》——**别信模型自述，用机械化的不变量强制**。
+# 规则：一旦改动过状态(mutation)，done(success=true) 之前必须**至少核验过一次真实
+# 结果**(verify_path 查文件系统 / extract 拿数据)。没核验就打回、提示先核验；只打回
+# 一次，不硬困死（模型确实核验不了时仍能诚实收尾）。
+# ---------------------------------------------------------------------------
+_VERIFY_ACTIONS = frozenset({"verify_path", "extract"})
+_NEUTRAL_ACTIONS = frozenset({"wait", "scroll", "done"})
+
+
+def action_kind(name: str) -> str:
+    """动作分类：verify(真值核验) / neutral(不产出要核验的结果) / mutation(改了状态)。"""
+    if name in _VERIFY_ACTIONS:
+        return "verify"
+    if name in _NEUTRAL_ACTIONS:
+        return "neutral"
+    return "mutation"
+
+
+def needs_verify_before_success(last_mutation_step, last_verify_step) -> bool:
+    """改动过状态、但之后没核验过 → 声称成功前该先核验真实结果。"""
+    if last_mutation_step is None:
+        return False
+    return last_verify_step is None or last_verify_step < last_mutation_step
+
+
 def _page_has_observable_content(dom_state) -> bool:
     text = (getattr(dom_state, "page_text", "") or "").strip()
     elements = getattr(dom_state, "elements", []) or []
