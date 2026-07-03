@@ -379,6 +379,17 @@ def test_verify_path_guarded_on_real_mac(tmp_path):
     assert res.ok is False
 
 
+def test_workflows_importable_standalone():
+    """回归：先 import macos.workflows（不先 import actions）不得循环 import 崩溃。
+    全新子进程解释器里验，本进程早已 import 过 actions 掩盖不了它。"""
+    import subprocess
+    root = str(Path(__file__).resolve().parents[1])
+    r = subprocess.run(
+        [sys.executable, "-c", "import macos.workflows as w; assert w.HANDLERS"],
+        cwd=root, capture_output=True, text=True, timeout=30)
+    assert r.returncode == 0, r.stderr
+
+
 # ================================================================== #
 # launch_app 白名单
 # ================================================================== #

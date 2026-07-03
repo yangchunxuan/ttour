@@ -6,8 +6,9 @@
 焦点，条件不对就诚实 ok=False，绝不无条件成功（A2/A4 教训 + 对抗评审的假成功防线）。
 
 actions.py 在末尾 import 本模块并把 HANDLERS 并进 _HANDLERS；ACTION_SPEC 与 _HANDLERS
-的一致性由 INV-04 / preflight 守。避免与 actions 顶层循环 import：本模块只从已定义好
-ActionResult 的 actions 里取它（actions 在文件末尾才 import 本模块）。
+的一致性由 INV-04 / preflight 守。**本模块顶层不 import actions**——ActionResult 在各
+handler 里懒加载（§7A 懒加载惯例），否则 `import macos.workflows`（先于 actions）会触发
+actions↔workflows 循环 import 崩溃。handler 是运行时才调，那时 actions 已完全就绪。
 """
 
 from __future__ import annotations
@@ -15,7 +16,6 @@ from __future__ import annotations
 import asyncio
 
 from macos import ax
-from macos.actions import ActionResult
 
 
 # 复合工具注入文本前，轮询等焦点真正落在「输入框」类控件上的参数。
@@ -60,6 +60,7 @@ async def _do_go_to_folder(session, dom_state, args, planner) -> ActionResult:
     """工作流：保存/打开对话框或 Finder 里，用「前往文件夹」直接跳到 path。
     内部 cmd+shift+g → 确认前往框已聚焦 → 输 path → 回车。把易错的多步序列收成一个
     可靠动作（A2 教训）。焦点没落到输入框（如根本不在对话框里）就诚实失败，不假成功。"""
+    from macos.actions import ActionResult  # 懒加载解循环 import
     path = str(args.get("path", "")).strip()
     if not path:
         return ActionResult(ok=False, message="go_to_folder failed: empty path")
@@ -85,6 +86,7 @@ async def _do_new_folder(session, dom_state, args, planner) -> ActionResult:
     """工作流：在 Finder 当前位置新建名为 name 的文件夹。
     先断言前台确是 Finder（否则 cmd+shift+n 在别的 App 会走偏、把名字灌进文档还假成功）→
     cmd+shift+n → 确认改名输入框已聚焦 → 输名字 → 回车（A4 教训）。"""
+    from macos.actions import ActionResult  # 懒加载解循环 import
     name = str(args.get("name", "")).strip()
     if not name:
         return ActionResult(ok=False, message="new_folder failed: empty name")
@@ -116,6 +118,7 @@ async def _do_verify_path(session, dom_state, args, planner) -> ActionResult:
 
     可选 contains=子串：确认某文件里真含这段文字。**只把布尔结论回传，绝不把文件
     正文放进 message/extracted**——正文经 broker→DeepSeek 就 egress 了（§2A.2）。"""
+    from macos.actions import ActionResult  # 懒加载解循环 import
     raw = str(args.get("path", "")).strip()
     if not raw:
         return ActionResult(ok=False, message="verify_path failed: empty path")
