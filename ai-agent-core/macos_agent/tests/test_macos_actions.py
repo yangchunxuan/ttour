@@ -177,7 +177,7 @@ def _record_ax(monkeypatch, *, frontmost=(1, "Finder", "com.apple.finder"),
     frontmost 改前台 App、role 改聚焦控件角色、*_ok 改原语返回值（模拟真机失败）。
     并把焦点轮询超时压到很短，反例用例不至于真等 2.5s。
     """
-    from macos import ax, actions
+    from macos import ax, workflows
     calls: list = []
 
     def fake_key(code, cmd=False, shift=False, option=False, control=False):
@@ -197,8 +197,8 @@ def _record_ax(monkeypatch, *, frontmost=(1, "Finder", "com.apple.finder"),
     monkeypatch.setattr(ax, "set_clipboard", fake_clip)
     monkeypatch.setattr(ax, "frontmost_app", lambda: frontmost)
     monkeypatch.setattr(ax, "focused_element_role", lambda: role)
-    monkeypatch.setattr(actions, "FOCUS_WAIT_TIMEOUT", 0.2)
-    monkeypatch.setattr(actions, "FOCUS_POLL_INTERVAL", 0.02)
+    monkeypatch.setattr(workflows, "FOCUS_WAIT_TIMEOUT", 0.2)
+    monkeypatch.setattr(workflows, "FOCUS_POLL_INTERVAL", 0.02)
     return ax, calls
 
 
@@ -311,6 +311,71 @@ def test_go_to_folder_guarded_on_real_mac():
     sess = _FakeSession(_fake_guard(_real_mac_runner))
     res = _run(execute(sess, MacDomState(),
                        {"name": "go_to_folder", "args": {"path": "~/Desktop"}}, None))
+    assert res.ok is False
+
+
+# ================================================================== #
+# verify_path：接地气自我验证（查真实文件系统，治「假成功」根）
+# ================================================================== #
+
+def test_verify_path_confirms_existing_file(tmp_path):
+    f = tmp_path / "note.txt"
+    f.write_text("hello world", encoding="utf-8")
+    sess = _FakeSession(_fake_guard(_vm_runner))
+    res = _run(execute(sess, MacDomState(), {"name": "verify_path", "args": {"path": str(f)}}, None))
+    assert res.ok is True and "exists=True" in res.message and "file=True" in res.message
+
+
+def test_verify_path_missing_file_is_honest_false(tmp_path):
+    sess = _FakeSession(_fake_guard(_vm_runner))
+    res = _run(execute(sess, MacDomState(),
+                       {"name": "verify_path", "args": {"path": str(tmp_path / "nope.txt")}}, None))
+    assert res.ok is False and "exists=False" in res.message
+
+
+def test_verify_path_dir_and_home_expansion(tmp_path):
+    sess = _FakeSession(_fake_guard(_vm_runner))
+    res = _run(execute(sess, MacDomState(),
+                       {"name": "verify_path", "args": {"path": "~"}}, None))  # 家目录必在
+    assert res.ok is True and "dir=True" in res.message
+
+
+def test_verify_path_contains_check(tmp_path):
+    f = tmp_path / "n.txt"
+    f.write_text("你好 hello 世界", encoding="utf-8")
+    sess = _FakeSession(_fake_guard(_vm_runner))
+    hit = _run(execute(sess, MacDomState(),
+                       {"name": "verify_path", "args": {"path": str(f), "contains": "hello"}}, None))
+    assert hit.ok is True and hit.extracted["contains_ok"] is True
+    miss = _run(execute(sess, MacDomState(),
+                        {"name": "verify_path", "args": {"path": str(f), "contains": "bye"}}, None))
+    assert miss.ok is False and miss.extracted["contains_ok"] is False
+
+
+def test_verify_path_never_egresses_file_content(tmp_path):
+    """安全：contains 检查只回布尔，绝不把文件正文放进 message/extracted（否则经 broker→DeepSeek 泄露）。"""
+    import json
+    f = tmp_path / "secret.txt"
+    f.write_text("SECRET_TOKEN_ABC123", encoding="utf-8")
+    sess = _FakeSession(_fake_guard(_vm_runner))
+    res = _run(execute(sess, MacDomState(),
+                       {"name": "verify_path", "args": {"path": str(f), "contains": "SECRET"}}, None))
+    assert res.ok is True
+    assert "SECRET_TOKEN_ABC123" not in res.message
+    assert "SECRET_TOKEN_ABC123" not in json.dumps(res.extracted, ensure_ascii=False)
+
+
+def test_verify_path_empty_rejected():
+    sess = _FakeSession(_fake_guard(_vm_runner))
+    res = _run(execute(sess, MacDomState(), {"name": "verify_path", "args": {"path": ""}}, None))
+    assert res.ok is False and "empty path" in res.message
+
+
+def test_verify_path_guarded_on_real_mac(tmp_path):
+    """读文件系统也过守卫：真 Mac 上被拒（fail-closed 一致）。"""
+    f = tmp_path / "x.txt"; f.write_text("y", encoding="utf-8")
+    sess = _FakeSession(_fake_guard(_real_mac_runner))
+    res = _run(execute(sess, MacDomState(), {"name": "verify_path", "args": {"path": str(f)}}, None))
     assert res.ok is False
 
 

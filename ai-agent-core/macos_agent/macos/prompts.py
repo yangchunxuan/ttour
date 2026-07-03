@@ -63,6 +63,15 @@ ACTION_SPEC: dict[str, dict] = {
         "required": ["name"],
         "desc": "在 Finder 当前位置一步新建名为 name 的文件夹（内部走 cmd+shift+n + 直接改名）。",
     },
+    "verify_path": {
+        "args": "path:str, contains?:str",
+        "required": ["path"],
+        "desc": (
+            "直接查真实文件系统，确认 path 处的产物真的存在（存文件/建文件夹后**在 done 前**"
+            "用它核实，别靠界面看着像成功就以为成了）。给 contains 时还会确认该文件里真含这段文字。"
+            "ok=True 表示确实存在/命中。"
+        ),
+    },
     "close_window": {
         "args": "(无)",
         "required": [],
@@ -175,6 +184,7 @@ def get_system_prompt() -> str:
 - 不要重复：绝不连续重复上一步同样的动作（相同 name+args）。一个动作没带来窗口变化时，换一种思路（滚动、按 Escape、点别的控件）。
 - 卡住就换招：连续两步没有进展时，重新审视控件列表，尝试不同控件或路径，而不是原地打转。
 - 见好就收：目标数据已清楚出现在可见文本里时，先用 extract 按需求抽取，拿到结果后立刻 done(success=true, ..., result=抽取结果)，不要多做无谓操作。
+- **别假成功（最重要）**：存文件、建文件夹这类"产出一个东西"的任务，界面看着像成功≠真成功（保存对话框常有坑）。done(success=true) 之前，**先用 verify_path 查真实文件系统确认产物真的在**（存文本文件可带 contains 连内容一起核实）；verify_path 返回 ok=false 就说明没成，别谎报成功，回去重做或诚实 done(success=false)。
 - 确实做不到：多次尝试仍无法达成（应用不在白名单、控件读不到、权限不够），用 done(success=false, message=说明原因) 诚实结束。
 
 现在开始。严格只输出规定的 JSON。"""
