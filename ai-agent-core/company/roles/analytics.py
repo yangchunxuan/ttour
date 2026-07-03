@@ -34,6 +34,18 @@ class AnalyticsAgent:
         self.db.conn.commit()
         return cur.lastrowid
 
+    def record_stage_once(self, event_type: str, lead_id: int, amount: int = 0,
+                          platform: str = "", region: str = "") -> bool:
+        """幂等记一个阶段事件：同一 lead 同一阶段只记一次（避免多路径重复计数）。
+        返回是否真的写入。"""
+        if lead_id is not None and self.db.conn.execute(
+            "SELECT 1 FROM funnel_events WHERE event_type=? AND lead_id=?",
+            (event_type, lead_id)).fetchone():
+            return False
+        self.record_event(event_type, lead_id=lead_id, amount=amount,
+                          platform=platform, region=region)
+        return True
+
     def funnel_summary(self) -> dict:
         """整体漏斗：各阶段人数 + 成交金额 + 转化率。"""
         counts = {}

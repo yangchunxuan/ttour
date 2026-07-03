@@ -218,7 +218,7 @@ class SaleSmartlyInbound:
 
         # 整段 transcript 重抽 → 字段随对话渐次填满（同一 Lead 更新，不新建）
         result = self.cs.ingest(transcript, source=f"salesmartly:{m.channel_name}",
-                                lead_id=lead_id)
+                                lead_id=lead_id, platform=m.platform)
         conn.execute("UPDATE ss_sessions SET lead_id=? WHERE chat_session_id=?",
                      (result["lead_id"], m.conversation_id))
         conn.commit()

@@ -33,17 +33,56 @@ from company.roles.analytics import AnalyticsAgent
 from company.console import op_pending, _payment_adapter
 
 
-def tick(db: Database, payment_adapter=None) -> dict:
-    """自转一轮（纯函数，可测）：自动对账 + 汇总待人审队列 + 转化快照。
-
-    只做自主安全动作；不发报价、不下单（那些进 pending 待人审）。
+def _auto_advance_leads(db: Database, an: AnalyticsAgent) -> list[dict]:
+    """把「已合格但还没报价」的 Lead 自动推进成**待人审报价**（§3：只生成，不发）。
+    这是前门（webhook 收进的合格客户）→ 计调报价的自主接续，让客户进来就自动被报价。
     """
+    from company.roles.operations import OperationsAgent
+    from company.pipeline import auto_plan
+    ops = OperationsAgent(db)
+    rows = db.conn.execute(
+        "SELECT id FROM leads WHERE status='qualified' "
+        "AND id NOT IN (SELECT DISTINCT lead_id FROM quotes)").fetchall()
+    out = []
+    for r in rows:
+        lead = db.get_lead(r["id"])
+        an.record_stage_once("valid", lead.id, platform=lead.platform)   # 有效客户
+        q = ops.build_quote(lead.id, auto_plan(db, lead))
+        if q["status"] == "quoted":
+            an.record_stage_once("quoted", lead.id, platform=lead.platform)
+            out.append({"lead_id": lead.id, "quote_id": q["quote_id"], "price": q["price"]})
+        else:  # 价格库缺 → 诚实报缺，不编价（留待补价格库；不反复噪音）
+            out.append({"lead_id": lead.id, "blocked": q["status"], "missing": q.get("missing")})
+    return out
+
+
+def tick(db: Database, payment_adapter=None) -> dict:
+    """自转一轮（纯函数，可测）：
+      · 自动报价：合格 Lead → 待人审报价（生成，不发）
+      · 自动对账：读支付方 PAID 状态推进已付款订单；结清记成交
+      · 汇总待人审队列 + 转化快照
+    只做自主安全动作；对外承诺（发报价/向供应商下单）进 pending 待人审。
+    """
+    an = AnalyticsAgent(db)
+    auto_quoted = _auto_advance_leads(db, an)        # 合格客户 → 自动报价（待人审）
     coll = CollectionAgent(db, payment_adapter)
     reconciled = coll.reconcile_all()                # 读支付方状态自动推进已付款订单
+    # 结清的订单记成交（won，幂等，带平台标签便于漏斗）
+    for rr in reconciled.get("reconciled", []):
+        if "balance" in rr.get("advanced", []):
+            row = db.conn.execute(
+                "SELECT q.lead_id lead_id, q.quote_price price, l.platform platform "
+                "FROM orders o JOIN quotes q ON o.quote_id=q.id JOIN leads l ON q.lead_id=l.id "
+                "WHERE o.id=?", (rr["order_id"],)).fetchone()
+            if row:
+                an.record_stage_once("won", row["lead_id"], amount=row["price"],
+                                     platform=row["platform"])
     pending = op_pending(db)                          # 卡在人审闸门的待办
-    funnel = AnalyticsAgent(db).funnel_summary()
+    funnel = an.funnel_summary()
     pending_count = sum(len(v) for v in pending.values())
     return {
+        "auto_quoted": [x for x in auto_quoted if "quote_id" in x],
+        "quote_blocked": [x for x in auto_quoted if "blocked" in x],
         "reconciled": reconciled.get("reconciled", []),
         "pending_gates": pending,
         "pending_count": pending_count,
@@ -62,8 +101,8 @@ def run(db: Database, extractor=None, secret: Optional[str] = None,
     """启动自主运行循环。once=True → 只跑一轮（不起 webhook 服务）。"""
     if once:
         out = tick(db, payment_adapter)
-        _log("单轮：自动推进 %d 单，待人审 %d 项" %
-             (len(out["reconciled"]), out["pending_count"]))
+        _log("单轮：自动报价 %d 单，对账推进 %d 单，待人审 %d 项" %
+             (len(out["auto_quoted"]), len(out["reconciled"]), out["pending_count"]))
         print(json.dumps(out, ensure_ascii=False, indent=2))
         return
 
@@ -81,6 +120,8 @@ def run(db: Database, extractor=None, secret: Optional[str] = None,
     try:
         while True:
             out = tick(db, payment_adapter)
+            if out["auto_quoted"]:
+                _log(f"自动生成待人审报价：{[x['quote_id'] for x in out['auto_quoted']]}")
             if out["reconciled"]:
                 _log(f"自动推进已付款订单：{[r['order_id'] for r in out['reconciled']]}")
             _log(f"待人审 {out['pending_count']} 项 | 成交 {out['funnel']['counts']['won']} "

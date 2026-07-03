@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS price_book (
 CREATE TABLE IF NOT EXISTS leads (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     source        TEXT DEFAULT '',    -- SaleSmartly 会话 id
+    platform      TEXT DEFAULT '',    -- 归一投放平台 facebook/instagram/…（漏斗维度）
     pax_count     INTEGER,            -- 人数
     ages          TEXT,               -- 年龄描述
     depart_date   TEXT,               -- 出行日期

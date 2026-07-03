@@ -95,3 +95,53 @@ def test_run_loop_bounded_by_max_ticks(db):
     run(db, serve_webhook=False, interval=0, max_ticks=2,
         payment_adapter=StubPaymentAdapter())
     # 跑完不抛异常即通过（主循环受控退出）
+
+
+def test_autopilot_auto_advances_webhook_lead_to_quote(db):
+    """自主路径：webhook 收进合格客户 → autopilot 自动报价（待人审、未发）→ 漏斗自洽。"""
+    from company.systems.salesmartly import SaleSmartlyInbound, parse_webhook
+    # 价格库
+    sid = db.add_supplier(Supplier(name="北京", types=["hotel"], service_score=4))
+    db.add_price(PriceEntry(city="北京", resource_type="hotel", supplier_id=sid,
+                            date_start="2026-09-01", date_end="2026-12-31", cost=800 * Y))
+    fields = {"pax_count": 2, "ages": "35", "depart_date": "2026-10-05", "duration_days": 3,
+              "cities": ["北京"], "has_flight": True, "has_budget": False}
+    inbound = SaleSmartlyInbound(db, lambda c, s: dict(fields))
+    r = inbound.handle(parse_webhook({
+        "event": "message", "chat_user_id": "u", "chat_session_id": "s", "sequence_id": 1,
+        "msg": "去北京", "msg_type": "text", "channel": 1, "send_time": "1"}))
+    assert r["status"] == "qualified"
+    lead_id = r["lead_id"]
+    # 此刻还没报价
+    assert db.conn.execute("SELECT COUNT(*) c FROM quotes").fetchone()["c"] == 0
+
+    out = tick(db)
+    # autopilot 自动生成了待人审报价
+    assert len(out["auto_quoted"]) == 1 and out["auto_quoted"][0]["lead_id"] == lead_id
+    row = db.conn.execute("SELECT status FROM quotes WHERE lead_id=?", (lead_id,)).fetchone()
+    assert row["status"] == "pending_review"          # §3：只生成，没自动发
+    assert any(x["quote"] for x in out["pending_gates"]["待发报价(闸门1)"])
+    # 漏斗自洽：inquiry(前门)→valid+quoted(autopilot)，平台标签一致
+    assert out["funnel"]["counts"] == {"inquiry": 1, "valid": 1, "quoted": 1, "won": 0}
+    from company.roles.marketing import MarketingAgent
+    fb = MarketingAgent(db).dimension_funnel("platform")[0]
+    assert fb["platform"] == "facebook" and fb["quoted"] == 1
+
+    # 再 tick 一次：幂等，不重复报价/不重复计数
+    out2 = tick(db)
+    assert out2["auto_quoted"] == []
+    assert out2["funnel"]["counts"] == {"inquiry": 1, "valid": 1, "quoted": 1, "won": 0}
+
+
+def test_autopilot_blocks_quote_when_pricebook_missing(db):
+    """合格客户但价格库缺 → autopilot 诚实报缺、不编价、不生成报价。"""
+    from company.systems.salesmartly import SaleSmartlyInbound, parse_webhook
+    fields = {"pax_count": 2, "ages": "35", "depart_date": "2026-10-05", "duration_days": 3,
+              "cities": ["成都"], "has_flight": True, "has_budget": False}   # 成都没价
+    inbound = SaleSmartlyInbound(db, lambda c, s: dict(fields))
+    inbound.handle(parse_webhook({
+        "event": "message", "chat_user_id": "u", "chat_session_id": "s", "sequence_id": 1,
+        "msg": "去成都", "msg_type": "text", "channel": 5, "send_time": "1"}))
+    out = tick(db)
+    assert out["auto_quoted"] == [] and len(out["quote_blocked"]) == 1
+    assert db.conn.execute("SELECT COUNT(*) c FROM quotes").fetchone()["c"] == 0

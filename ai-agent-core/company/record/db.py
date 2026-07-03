@@ -42,6 +42,9 @@ class Database:
         for col in ("deposit_ref", "balance_ref"):
             if col not in have:
                 self.conn.execute(f"ALTER TABLE orders ADD COLUMN {col} TEXT DEFAULT ''")
+        have_l = {r["name"] for r in self.conn.execute("PRAGMA table_info(leads)")}
+        if "platform" not in have_l:
+            self.conn.execute("ALTER TABLE leads ADD COLUMN platform TEXT DEFAULT ''")
 
     def close(self) -> None:
         self.conn.close()
@@ -83,11 +86,11 @@ class Database:
     # ---------------- leads ---------------- #
     def add_lead(self, l: Lead) -> int:
         cur = self.conn.execute(
-            "INSERT INTO leads(source,pax_count,ages,depart_date,duration_days,cities,"
+            "INSERT INTO leads(source,platform,pax_count,ages,depart_date,duration_days,cities,"
             "has_flight,has_budget,budget_amount,special_requests,hotel_level,room_bed_pref,"
             "guide_need,car_need,intent,convo_summary,status,created_at) "
-            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            (l.source, l.pax_count, l.ages, l.depart_date, l.duration_days,
+            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (l.source, l.platform, l.pax_count, l.ages, l.depart_date, l.duration_days,
              json.dumps(l.cities, ensure_ascii=False),
              None if l.has_flight is None else int(l.has_flight),
              None if l.has_budget is None else int(l.has_budget),
@@ -103,10 +106,10 @@ class Database:
         if l.id is None:
             raise ValueError("update_lead 需要 lead.id")
         self.conn.execute(
-            "UPDATE leads SET source=?,pax_count=?,ages=?,depart_date=?,duration_days=?,"
+            "UPDATE leads SET source=?,platform=?,pax_count=?,ages=?,depart_date=?,duration_days=?,"
             "cities=?,has_flight=?,has_budget=?,budget_amount=?,special_requests=?,hotel_level=?,"
             "room_bed_pref=?,guide_need=?,car_need=?,intent=?,convo_summary=?,status=? WHERE id=?",
-            (l.source, l.pax_count, l.ages, l.depart_date, l.duration_days,
+            (l.source, l.platform, l.pax_count, l.ages, l.depart_date, l.duration_days,
              json.dumps(l.cities, ensure_ascii=False),
              None if l.has_flight is None else int(l.has_flight),
              None if l.has_budget is None else int(l.has_budget),
@@ -120,7 +123,8 @@ class Database:
         if not row:
             return None
         return Lead(
-            id=row["id"], source=row["source"], pax_count=row["pax_count"], ages=row["ages"],
+            id=row["id"], source=row["source"], platform=row["platform"],
+            pax_count=row["pax_count"], ages=row["ages"],
             depart_date=row["depart_date"], duration_days=row["duration_days"],
             cities=json.loads(row["cities"] or "[]"),
             has_flight=None if row["has_flight"] is None else bool(row["has_flight"]),

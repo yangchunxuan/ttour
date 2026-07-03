@@ -89,6 +89,7 @@ class PriceEntry:
 @dataclass
 class Lead:
     source: str = ""
+    platform: str = ""          # 归一投放平台（facebook/instagram/…），漏斗按此统计
     pax_count: Optional[int] = None
     ages: Optional[str] = None
     depart_date: Optional[str] = None

@@ -88,9 +88,10 @@ def follow_up_question(miss: list[str]) -> str:
     return _ASK.get(miss[0], f"还想再确认一下您的{miss[0]}。")
 
 
-def build_lead(fields: dict, source: str = "") -> Lead:
+def build_lead(fields: dict, source: str = "", platform: str = "") -> Lead:
     return Lead(
         source=source,
+        platform=platform,
         pax_count=fields.get("pax_count"),
         ages=fields.get("ages"),
         depart_date=fields.get("depart_date"),
@@ -114,7 +115,7 @@ class CustomerServiceAgent:
         self.extractor = extractor
 
     def ingest(self, conversation_text: str, source: str = "",
-               lead_id: Optional[int] = None) -> dict:
+               lead_id: Optional[int] = None, platform: str = "") -> dict:
         """处理一段对话，返回 {lead_id, status, missing, follow_up, fields}。
 
         lead_id 为 None → 新建；给了 → 更新既有 Lead（多轮对话渐次补全用）。
@@ -122,7 +123,7 @@ class CustomerServiceAgent:
         raw = self.extractor(conversation_text, LEAD_EXTRACTION_SCHEMA)
         fields = raw if isinstance(raw, dict) else {}
         miss = missing_fields(fields)
-        lead = build_lead(fields, source)
+        lead = build_lead(fields, source, platform)
         lead.status = (LeadStatus.QUALIFIED.value if not miss
                        else LeadStatus.COLLECTING.value)
         if lead_id is None:
