@@ -263,9 +263,46 @@ async def _do_save_document(session, dom_state, args, planner) -> ActionResult:
                         extracted=result)
 
 
+async def _do_run_script(session, dom_state, args, planner) -> ActionResult:
+    """逃生出口：固定动作做不到时，直接在 VM 里跑一段 shell 命令或 AppleScript 把事
+    办成——这就是"自己临时造工具"的能力（模型卡在 GUI 上时的破局手段）。
+
+    **只在 VM 里可用**（和其它动作一样过 fail-closed 守卫）：任意代码执行正是要靠 VM
+    隔离兜住的危险能力，绝不在真机放开（spec §2A.1 的设计初衷）。
+
+    args: command:str（要跑的命令）, kind?:str（'shell' 默认 / 'applescript'）。
+    stdout+stderr（截断 1500 字）回给你做下一步判断；注意输出会经 broker→DeepSeek，
+    别把敏感文件整段打出来。"""
+    from macos.actions import ActionResult  # 懒加载解循环 import
+    command = str(args.get("command", "")).strip()
+    if not command:
+        return ActionResult(ok=False, message="run_script failed: empty command")
+    kind = str(args.get("kind", "shell")).lower()
+
+    def _sync() -> tuple[bool, str]:
+        import subprocess
+        cmd = ["osascript", "-e", command] if kind == "applescript" else ["/bin/bash", "-lc", command]
+        try:
+            p = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        except subprocess.TimeoutExpired:
+            return False, "run_script: 超时（>30s，可能在等某个授权/卡住）"
+        except Exception as e:  # noqa: BLE001
+            return False, f"run_script failed: {e}"
+        out = (p.stdout or "").strip()
+        if p.stderr:
+            out = (out + "\n[stderr] " + p.stderr.strip()).strip()
+        out = out[:1500]
+        ok = p.returncode == 0
+        return ok, f"run_script[{'ok' if ok else 'exit=' + str(p.returncode)}]: {out or '(无输出)'}"
+
+    ok, msg = await asyncio.to_thread(_sync)
+    return ActionResult(ok=ok, message=msg)
+
+
 HANDLERS = {
     "go_to_folder": _do_go_to_folder,
     "new_folder": _do_new_folder,
     "verify_path": _do_verify_path,
     "save_document": _do_save_document,
+    "run_script": _do_run_script,
 }

@@ -81,6 +81,15 @@ ACTION_SPEC: dict[str, dict] = {
             "存文件就用它，别自己去点保存对话框。目标文件夹用常用位置（Desktop/Documents/Downloads）。"
         ),
     },
+    "run_script": {
+        "args": "command:str, kind?:str('shell'|'applescript')",
+        "required": ["command"],
+        "desc": (
+            "逃生出口：GUI 动作卡住或做不到时，直接跑一段 shell 命令(默认)或 AppleScript 把事办成"
+            "（如 mkdir 建文件夹、osascript 操作 App）。返回命令输出。**你被沙盒隔离，可以放手用它破局**，"
+            "但优先用界面动作；只有界面走不通、或明显用命令更直接时才用。"
+        ),
+    },
     "close_window": {
         "args": "(无)",
         "required": [],
@@ -189,6 +198,9 @@ def get_system_prompt() -> str:
 - 点错了/走错窗口：用 close_window 关掉误开的窗口，或 launch_app 回到目标应用。
 - 不要重复：绝不连续重复上一步同样的动作（相同 name+args）。一个动作没带来窗口变化时，换一种思路（滚动、按 Escape、点别的控件）。
 - 卡住就换招：连续两步没有进展时，重新审视控件列表，尝试不同控件或路径，而不是原地打转。
+- **界面走不通就用 run_script 破局**：某个 GUI 操作反复失败（如对话框按键不生效、控件点不动），
+  别死磕——你在沙盒里，可以直接 run_script 跑 shell/AppleScript 把目标办成（如建文件夹用 mkdir、
+  操作 App 用 osascript），然后照常 verify_path 核实。这是你"自己造工具"的能力，卡壳时大胆用。
 - 见好就收：目标数据已清楚出现在可见文本里时，先用 extract 按需求抽取，拿到结果后立刻 done(success=true, ..., result=抽取结果)，不要多做无谓操作。
 - **别假成功（最重要）**：存文件、建文件夹这类"产出一个东西"的任务，界面看着像成功≠真成功（保存对话框常有坑）。done(success=true) 之前，**先用 verify_path 查真实文件系统确认产物真的在**（存文本文件可带 contains 连内容一起核实）；verify_path 返回 ok=false 就说明没成，别谎报成功，回去重做或诚实 done(success=false)。
 - 确实做不到：多次尝试仍无法达成（应用不在白名单、控件读不到、权限不够），用 done(success=false, message=说明原因) 诚实结束。

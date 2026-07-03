@@ -63,8 +63,9 @@ class Planner:
         prompts_module=None,
     ) -> None:
         # 本账号 /models 实测只有 deepseek-v4-flash / deepseek-v4-pro
-        # （legacy deepseek-chat 已不在列表，2026-07-24 正式退役），
-        # 故默认 v4-flash；可用环境变量 DEEPSEEK_MODEL 或 CLI 菜单覆盖。
+        # （legacy deepseek-chat 已不在列表，2026-07-24 正式退役）。
+        # 默认 v4-pro（更强的规划/纠错，桌面盲操作这种硬活值得）；
+        # 可用环境变量 DEEPSEEK_MODEL 或 CLI 菜单覆盖成 flash 省钱。
         # §7A-C2：brain 包里没有 agent.prompts，fallback 已删——必须显式注入
         # 提示词模块（macOS 路径传 macos.prompts）。先校验再建 client，
         # 让配置错误干净地抛 ValueError，而不是被 client 构造的报错盖住。
@@ -75,7 +76,7 @@ class Planner:
             )
         self.prompts = prompts_module
 
-        self.model = model or os.getenv("DEEPSEEK_MODEL", "deepseek-v4-flash")
+        self.model = model or os.getenv("DEEPSEEK_MODEL", "deepseek-v4-pro")
         self.base_url = base_url
         self._api_key = api_key or os.getenv("DEEPSEEK_API_KEY")
         # VM 内 api_key 是 broker 的 bearer token（必填）；但为了让本类在无

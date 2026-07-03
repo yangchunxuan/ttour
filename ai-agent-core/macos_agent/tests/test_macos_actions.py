@@ -391,6 +391,29 @@ def test_save_document_empty_path_rejected(monkeypatch):
     assert res.ok is False and "empty path" in res.message
 
 
+# ---- run_script 逃生出口：能干活 + 但危险权力只在 VM ---- #
+
+def test_run_script_shell_runs_and_returns_output():
+    sess = _FakeSession(_fake_guard(_vm_runner))
+    res = _run(execute(sess, MacDomState(),
+                       {"name": "run_script", "args": {"command": "echo esc4pe_hatch"}}, None))
+    assert res.ok is True and "esc4pe_hatch" in res.message
+
+
+def test_run_script_empty_rejected():
+    sess = _FakeSession(_fake_guard(_vm_runner))
+    res = _run(execute(sess, MacDomState(), {"name": "run_script", "args": {"command": ""}}, None))
+    assert res.ok is False and "empty command" in res.message
+
+
+def test_run_script_refused_on_real_mac():
+    """安全命脉：任意代码执行在真 Mac（守卫不放行）上被拒——绝不把这权力放真机。"""
+    sess = _FakeSession(_fake_guard(_real_mac_runner))
+    res = _run(execute(sess, MacDomState(),
+                       {"name": "run_script", "args": {"command": "echo x"}}, None))
+    assert res.ok is False
+
+
 def test_workflows_importable_standalone():
     """回归：先 import macos.workflows（不先 import actions）不得循环 import 崩溃。
     全新子进程解释器里验，本进程早已 import 过 actions 掩盖不了它。"""
