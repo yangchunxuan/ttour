@@ -68,8 +68,10 @@ class OperationsAgent:
         self.db = db
 
     def build_quote(self, lead_id: int, plan: list[dict],
-                    markup: float | None = None) -> dict:
+                    markup: float | None = None, *,
+                    version: int = 1, parent_quote_id: int | None = None) -> dict:
         """plan: [{city, resource_type, qty, spec_filter?}]。
+        version/parent_quote_id 用于二次报价（re_quote 传入，链起版本）。
         返回 {status, quote_id?, missing?, total?, price?}。"""
         markup = get_markup(self.db) if markup is None else markup
         items: list[QuoteItem] = []
@@ -106,8 +108,49 @@ class OperationsAgent:
         q = Quote(lead_id=lead_id, itinerary=itinerary, total_cost=total,
                   margin=margin, quote_price=price,
                   commitments=default_commitments(),
+                  version=version, parent_quote_id=parent_quote_id,
                   status=QuoteStatus.PENDING_REVIEW.value)  # 发客户前人审（§3 业务闸门）
         qid = self.db.add_quote(q, items)  # 走 INV-Q1/Q2/Q3/Q4 护栏
         return {"status": "quoted", "quote_id": qid, "total": total,
-                "margin": margin, "price": price,
+                "margin": margin, "price": price, "version": version,
+                "parent_quote_id": parent_quote_id,
                 "supplier_ids": [it.price_book_id for it in items]}
+
+    # ------------------ 二次报价（V2：低价引流 → 按实际需求重报）------------------ #
+    def _plan_from_quote(self, quote_id: int) -> list[dict]:
+        rows = self.db.conn.execute(
+            "SELECT city, resource_type, qty FROM quote_items WHERE quote_id=?",
+            (quote_id,)).fetchall()
+        return [{"city": r["city"], "resource_type": r["resource_type"],
+                 "qty": r["qty"]} for r in rows]
+
+    def re_quote(self, parent_quote_id: int, plan: list[dict] | None = None,
+                 markup: float | None = None, reason: str = "") -> dict:
+        """二次报价：生成父单的**下一版本**并链在一起（version+1, parent_quote_id）。
+
+        典型场景（V2 一末）：第一版低价引流 → 客户确认实际需求/感觉后按真实资源重报。
+        plan=None → 沿用父单行程（只调加价/币值）；给新 plan → 按调整后的行程重算。
+        走与首报同样的护栏（INV-Q1..Q4），仍是 pending_review（发客户前人审）。
+        """
+        parent = self.db.conn.execute(
+            "SELECT * FROM quotes WHERE id=?", (parent_quote_id,)).fetchone()
+        if parent is None:
+            return {"status": "no_parent", "parent_quote_id": parent_quote_id}
+        use_plan = plan if plan is not None else self._plan_from_quote(parent_quote_id)
+        res = self.build_quote(parent["lead_id"], use_plan, markup=markup,
+                               version=parent["version"] + 1,
+                               parent_quote_id=parent_quote_id)
+        if res["status"] == "quoted":
+            res["reason"] = reason or "按客户确认的实际需求二次报价"
+            res["parent_price"] = parent["quote_price"]
+            res["delta"] = res["price"] - parent["quote_price"]
+        return res
+
+    def quote_history(self, lead_id: int) -> list[dict]:
+        """一条 Lead 的报价版本链（按版本序），看低价引流→二次报价的演变。"""
+        rows = self.db.conn.execute(
+            "SELECT id, version, parent_quote_id, quote_price, status, created_at "
+            "FROM quotes WHERE lead_id=? ORDER BY version, id", (lead_id,)).fetchall()
+        return [{"quote_id": r["id"], "version": r["version"],
+                 "parent_quote_id": r["parent_quote_id"], "price": r["quote_price"],
+                 "status": r["status"]} for r in rows]

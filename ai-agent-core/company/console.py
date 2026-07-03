@@ -135,6 +135,16 @@ def op_market(db: Database) -> dict:
     return MarketingAgent(db).feedback_report()
 
 
+def op_requote(db: Database, parent_quote_id: int, markup: float | None = None) -> dict:
+    """二次报价（V2 低价引流→按实际需求重报）：生成父单下一版本，仍待人审后发。"""
+    r = OperationsAgent(db).re_quote(parent_quote_id, markup=markup)
+    if r["status"] != "quoted":
+        return r
+    return {"status": "requoted", "quote_id": r["quote_id"], "version": r["version"],
+            "parent_quote_id": r["parent_quote_id"], "对客价元": r["price"] / 100,
+            "较上版元": r["delta"] / 100, "next_gate": f"console send {r['quote_id']}"}
+
+
 # ---- CLI 薄壳 ---- #
 def main() -> int:
     ap = argparse.ArgumentParser(description="定制游公司运营控制台")
@@ -146,6 +156,8 @@ def main() -> int:
         p = sub.add_parser(name); p.add_argument("id", type=int)
     sub.add_parser("funnel")
     sub.add_parser("market")
+    prq = sub.add_parser("requote"); prq.add_argument("parent_quote_id", type=int)
+    prq.add_argument("--markup", type=float, default=None)
     args = ap.parse_args()
 
     db = Database()
@@ -170,6 +182,8 @@ def main() -> int:
         out = op_funnel(db)
     elif args.cmd == "market":
         out = op_market(db)
+    elif args.cmd == "requote":
+        out = op_requote(db, args.parent_quote_id, args.markup)
     print(json.dumps(out, ensure_ascii=False, indent=2))
     return 0
 
