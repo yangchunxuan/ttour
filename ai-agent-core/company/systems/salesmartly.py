@@ -51,6 +51,12 @@ CHANNELS = {
     7: "WhatsApp API", 12: "WhatsApp App", 15: "Telegram", 16: "TikTok",
 }
 
+# channel → 投放平台归一标签（漏斗/投放优化按此维度统计，跨组件一致）
+CHANNEL_PLATFORM = {
+    1: "facebook", 2: "web", 3: "email", 5: "instagram", 6: "line",
+    7: "whatsapp", 12: "whatsapp", 15: "telegram", 16: "tiktok",
+}
+
 WEBHOOK_PATH = "/salesmartly/webhook"
 
 
@@ -74,6 +80,11 @@ class InboundMessage:
     @property
     def channel_name(self) -> str:
         return CHANNELS.get(self.channel, f"channel-{self.channel}")
+
+    @property
+    def platform(self) -> str:
+        """投放平台归一标签（facebook/instagram/…），漏斗按此统计。"""
+        return CHANNEL_PLATFORM.get(self.channel, self.channel_name)
 
     @property
     def is_text(self) -> bool:
@@ -156,6 +167,8 @@ class SaleSmartlyInbound:
     def __init__(self, db: Database, extractor: Extractor):
         self.db = db
         self.cs = CustomerServiceAgent(db, extractor)
+        from company.roles.analytics import AnalyticsAgent
+        self.an = AnalyticsAgent(db)
         db.conn.executescript(_INBOUND_DDL)
         db.conn.commit()
 
@@ -177,6 +190,7 @@ class SaleSmartlyInbound:
             "SELECT transcript, lead_id FROM ss_sessions WHERE chat_session_id=?",
             (m.conversation_id,),
         ).fetchone()
+        is_new = row is None    # 新会话 = 一次「咨询」（V2 一·3 咨询人数）
         if row is None:
             conn.execute(
                 "INSERT INTO ss_sessions(chat_session_id,chat_user_id,channel,transcript,updated_at)"
@@ -197,6 +211,8 @@ class SaleSmartlyInbound:
 
         # 非文本消息（图片/系统消息等）只备档，不触发需求抽取
         if not (m.is_text and transcript):
+            if is_new:   # 客户首次接触即记一次咨询
+                self.an.record_event("inquiry", lead_id=None, platform=m.platform)
             return {"session": m.conversation_id, "contact": m.contact_id,
                     "channel": m.channel_name, "msg_type": m.msg_type, "skipped": True}
 
@@ -206,8 +222,10 @@ class SaleSmartlyInbound:
         conn.execute("UPDATE ss_sessions SET lead_id=? WHERE chat_session_id=?",
                      (result["lead_id"], m.conversation_id))
         conn.commit()
+        if is_new:   # 每个会话只记一次咨询（inquiry），归一化平台标签便于漏斗统计
+            self.an.record_event("inquiry", lead_id=result["lead_id"], platform=m.platform)
         return {"session": m.conversation_id, "contact": m.contact_id,
-                "channel": m.channel_name, **result}
+                "channel": m.channel_name, "platform": m.platform, **result}
 
 
 # ------------------------------------------------------------------ #
