@@ -18,61 +18,83 @@ from datetime import datetime, timezone
 from company import handoff
 
 _COLUMNS = [
-    ("human", "🧑 待你拍板", "碰钱 / 对客户承诺——只有你能拍"),
-    ("claude", "⬆️ 升级 Claude", "DeepSeek 搞不定，二号员工处理中"),
-    ("auto", "✅ DeepSeek 自理", "一号员工已自己回复，留痕备查"),
+    ("human", "待你拍板", "碰钱 / 对客户承诺——只有你能拍"),
+    ("claude", "升级 Claude 处理中", "DeepSeek 搞不定，二号员工处理中"),
+    ("auto", "DeepSeek 自理", "一号员工已自己回复，留痕备查"),
 ]
 
 _PAGE = """<!doctype html><html lang="zh"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>运营台 · Orient Surprises</title>
 <style>
-:root{--bg:#f4f1ea;--card:#fff;--ink:#2c2a26;--sub:#8a8578;--line:#e3ddd0;
- --human:#c0563b;--claude:#3b6ea5;--auto:#5b8a5b}
-*{box-sizing:border-box}body{margin:0;font-family:-apple-system,"PingFang SC",Inter,sans-serif;
- background:var(--bg);color:var(--ink)}
-header{padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:14px}
-header h1{font-size:19px;margin:0;font-weight:600}
-header .sub{color:var(--sub);font-size:13px}
-header .refresh{margin-left:auto;font-size:13px;color:var(--sub);cursor:pointer}
-.board{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:20px;align-items:start}
-.col{background:#efe9dd;border-radius:12px;padding:12px;min-height:120px}
-.col h2{font-size:14px;margin:2px 4px 4px;display:flex;gap:8px;align-items:center}
-.col .hint{font-size:11px;color:var(--sub);margin:0 4px 10px}
-.col .count{font-size:11px;color:#fff;border-radius:10px;padding:1px 8px}
-.human .count{background:var(--human)}.claude .count{background:var(--claude)}.auto .count{background:var(--auto)}
-.card{background:var(--card);border-radius:10px;padding:12px 13px;margin-bottom:10px;
- box-shadow:0 1px 3px rgba(0,0,0,.06);border-left:3px solid var(--line)}
-.human .card{border-left-color:var(--human)}.claude .card{border-left-color:var(--claude)}.auto .card{border-left-color:var(--auto)}
-.card .msg{font-size:14px;line-height:1.45;margin:0 0 8px}
-.card .meta{font-size:12px;color:var(--sub);line-height:1.5}
-.card .meta b{color:var(--ink);font-weight:600}
-.card .reply{font-size:12.5px;background:#faf8f2;border-radius:7px;padding:7px 9px;margin-top:8px;color:#4a463d}
-.card .why{font-size:12px;color:var(--human);margin-top:6px}
-.card .act{margin-top:9px;text-align:right}
-.card .act button{font-size:12px;border:1px solid var(--line);background:#fff;border-radius:7px;
- padding:4px 11px;cursor:pointer;color:var(--ink)}
-.card .act button:hover{background:#f0ece2}
-.empty{color:var(--sub);font-size:12px;text-align:center;padding:16px 0}
-.card .src{font-size:11px;color:var(--sub);text-transform:capitalize}
+:root{--ground:#e7eaef;--panel:#f3f5f8;--card:#fff;--ink:#1b2431;--sub:#66717f;--line:#d7dce3;
+ --human:#a2661a;--human-bg:#f6eddd;--claude:#3a569a;--claude-bg:#e7ecf7;--auto:#4a7a64;--auto-bg:#e4efe9;
+ --mono:ui-monospace,"SF Mono",Menlo,monospace;--ui:-apple-system,"PingFang SC","Segoe UI",Roboto,sans-serif}
+*{box-sizing:border-box}body{margin:0;font-family:var(--ui);background:var(--ground);color:var(--ink);line-height:1.5}
+.top{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;padding:20px clamp(14px,4vw,30px) 2px}
+.top h1{font-size:20px;font-weight:650;margin:0;letter-spacing:-.01em}
+.top .brand{color:var(--sub);font-size:13px}
+.top .refresh{margin-left:auto;font-size:12px;color:var(--sub);cursor:pointer;border:1px solid var(--line);
+ border-radius:20px;padding:3px 11px;background:var(--card)}
+.lead{color:var(--sub);font-size:12.5px;margin:4px clamp(14px,4vw,30px) 16px;max-width:72ch}
+.lead b{color:var(--ink);font-weight:600}
+.board{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:start;padding:0 clamp(14px,4vw,30px) 40px}
+@media(max-width:820px){.board{grid-template-columns:1fr}}
+.lane{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:12px 12px 6px}
+.lane .hd{display:flex;align-items:center;gap:8px;padding:2px 3px}
+.lane .dot{width:9px;height:9px;border-radius:50%;flex:none}
+.lane .lname{font-size:12px;font-weight:650;letter-spacing:.02em}
+.lane .cnt{margin-left:auto;font-size:11px;font-weight:650;color:#fff;border-radius:20px;min-width:20px;
+ text-align:center;padding:1px 7px;font-variant-numeric:tabular-nums}
+.lane .purpose{font-size:11px;color:var(--sub);margin:3px 4px 11px}
+.human .dot,.human .cnt{background:var(--human)}.human{border-top:2px solid var(--human)}
+.claude .dot,.claude .cnt{background:var(--claude)}.claude{border-top:2px solid var(--claude)}
+.auto .dot,.auto .cnt{background:var(--auto)}.auto{border-top:2px solid var(--auto)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:11px 12px 12px;
+ margin-bottom:10px;box-shadow:0 1px 2px rgba(20,30,45,.05)}
+.card .chan{display:flex;align-items:center;gap:6px;margin-bottom:7px}
+.card .chan .src{font-family:var(--mono);font-size:10.5px;color:var(--sub)}
+.card .chan .id{font-family:var(--mono);font-size:10.5px;color:var(--sub);margin-left:auto}
+.card .status{font-size:10px;font-weight:650;letter-spacing:.03em;padding:2px 7px;border-radius:5px}
+.human .status{color:var(--human);background:var(--human-bg)}
+.claude .status{color:var(--claude);background:var(--claude-bg)}
+.auto .status{color:var(--auto);background:var(--auto-bg)}
+.card .msg{font-size:13.5px;margin:0 0 8px}
+.card .row{font-size:12px;color:var(--sub);margin-top:5px}
+.card .row b{color:var(--ink);font-weight:600}
+.card .ext{display:inline-flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.card .ext span{font-size:10.5px;font-family:var(--mono);color:var(--ink);background:var(--ground);border-radius:5px;padding:1px 6px}
+.card .reply{font-size:12px;color:#4c5563;background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:7px 9px;margin-top:8px}
+.card .reply em{color:var(--sub);font-style:normal;font-size:10.5px;letter-spacing:.04em;display:block;margin-bottom:2px}
+.card .why{font-size:11.5px;margin-top:8px;padding-left:9px;border-left:2px solid}
+.human .why{color:var(--human);border-color:var(--human)}.claude .why{color:var(--claude);border-color:var(--claude)}
+.card .act{margin-top:10px;text-align:right}
+.card .act button{font:inherit;font-size:11.5px;font-weight:550;cursor:pointer;border-radius:7px;
+ padding:5px 11px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+.card .act button:hover{background:var(--panel)}
+.empty{color:var(--sub);font-size:12px;text-align:center;padding:14px 0}
 </style></head><body>
-<header><h1>运营台</h1><span class="sub">Orient Surprises · 客户 case 看板</span>
-<span class="refresh" onclick="load()">↻ 刷新</span></header>
+<div class="top"><h1>运营台</h1><span class="brand">Orient Surprises · 客户 case 看板</span>
+<span class="refresh" onclick="load()">↻ 刷新</span></div>
+<p class="lead">客户私信进来，<b>DeepSeek(一号)</b> 先判断能不能自理：碰钱/承诺的等<b>你</b>拍板，
+搞不定的升给<b>Claude(二号)</b>，常规的它自己回、留痕备查。</p>
 <div class="board" id="board"></div>
 <script>
 const COLS=%COLS%;
+const STAT={human:"待拍板",claude:"处理中",auto:"已回复"};
 function esc(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
 function card(c){
  const d=c.decision||{};
  const ext=Object.entries(d.extracted||{}).filter(([k,v])=>v!==null&&v!==''&&!(Array.isArray(v)&&!v.length));
  const why=c.route==='human'?'🔒 碰钱/承诺——等你拍板':(d.escalate_reason||'');
+ const replyTag=c.route==='auto'?'已回客户':'拟回复（未发）';
  return `<div class="card">
-  <div class="src">${esc(c.source)} · #${c.id}</div>
+  <div class="chan"><span class="src">${esc(c.source)}</span><span class="status">${STAT[c.route]||''}</span><span class="id">#${c.id}</span></div>
   <p class="msg">${esc(c.message)}</p>
-  <div class="meta"><b>DeepSeek 读懂</b>：${esc(d.understood||'—')}</div>
-  ${ext.length?`<div class="meta"><b>抽到</b>：${esc(ext.map(([k,v])=>k+'='+v).join(' · '))}</div>`:''}
-  ${d.reply_draft?`<div class="reply">拟回复：${esc(d.reply_draft)}</div>`:''}
+  <div class="row"><b>DeepSeek 读懂</b>：${esc(d.understood||'—')}</div>
+  ${ext.length?`<div class="ext">${ext.map(([k,v])=>`<span>${esc(k)}=${esc(String(v))}</span>`).join('')}</div>`:''}
   ${why?`<div class="why">${esc(why)}</div>`:''}
+  ${d.reply_draft?`<div class="reply"><em>${replyTag}</em>${esc(d.reply_draft)}</div>`:''}
   ${c.status==='open'?`<div class="act"><button onclick="resolve(${c.id})">标为已处理</button></div>`:''}
  </div>`;
 }
@@ -82,8 +104,9 @@ async function load(){
  cases.forEach(c=>{if(byRoute[c.route])byRoute[c.route].push(c)});
  document.getElementById('board').innerHTML=COLS.map(([r,title,hint])=>{
   const list=byRoute[r]||[];
-  return `<div class="col ${r}"><h2>${title} <span class="count">${list.length}</span></h2>
-   <p class="hint">${hint}</p>${list.length?list.map(card).join(''):'<div class="empty">暂无</div>'}</div>`;
+  return `<section class="lane ${r}"><div class="hd"><span class="dot"></span>
+   <span class="lname">${title}</span><span class="cnt">${list.length}</span></div>
+   <p class="purpose">${hint}</p>${list.length?list.map(card).join(''):'<div class="empty">暂无</div>'}</section>`;
  }).join('');
 }
 async function resolve(id){await fetch('/api/resolve',{method:'POST',headers:{'content-type':'application/json'},
