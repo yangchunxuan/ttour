@@ -358,8 +358,10 @@ def check_inv_13(root: Path) -> list[Finding]:
     except Exception as exc:  # noqa: BLE001
         return [Finding("INV-13", "macos/prompts.py", 1, f"无法内省系统提示词/动作：{exc}", FIXES["INV-13"])]
     out, seen = [], set()
-    for combo in re.findall(r"[A-Za-z]+(?:\+[A-Za-z]+)+", text):
-        norm = combo.lower()
+    # 允许 + 两侧空格、末段数字（如 'cmd + 1'）——覆盖执行器实际接受的写法，
+    # 由 _parse_key 统一判定（数字/非白名单键自然判 None 被报出）。
+    for combo in re.findall(r"[A-Za-z]+(?:\s*\+\s*[A-Za-z0-9]+)+", text):
+        norm = re.sub(r"\s+", "", combo.lower())
         if not norm.split("+")[0] in {"cmd", "command", "ctrl", "control", "opt", "option", "shift"}:
             continue  # 只校验修饰键组合，跳过非按键文本
         if norm in seen:
@@ -380,8 +382,9 @@ def check_inv_14(root: Path) -> list[Finding]:
     except Exception as exc:  # noqa: BLE001
         return [Finding("INV-14", "macos/prompts.py", 1, f"无法内省系统提示词：{exc}", FIXES["INV-14"])]
     out = []
-    # 反模式：教模型「文件名框…可以…（完整）路径」（A2 假成功根因）
-    if re.search(r"文件名[^。\n]{0,30}可以[^。\n]{0,12}(完整路径|路径)", text):
+    # 反模式：教模型「文件名框…可以…（完整）路径」（A2 假成功根因）。
+    # (?<!不) 排除「不可以」这类警告句，避免误伤正确的否定指引。
+    if re.search(r"文件名[^。\n]{0,30}(?<!不)可以[^。\n]{0,12}(完整路径|路径)", text):
         out.append(Finding("INV-14", "macos/prompts.py", 1,
                            "保存指引疑似教模型往文件名框输入路径（/ 触发 Go-to-Folder → 假成功）",
                            FIXES["INV-14"]))

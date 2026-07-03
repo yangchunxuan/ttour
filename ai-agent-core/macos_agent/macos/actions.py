@@ -406,18 +406,41 @@ def _inject_text_sync(text: str) -> tuple[bool, str]:
     return True, "ok"
 
 
+# 复合工具注入文本前，轮询等焦点真正落在「输入框」类控件上的参数。
+# 换掉旧的固定 sleep：真机上 sheet 弹出 / 改名态就绪有可变延迟（冷启动/VM 负载下常
+# 超过固定值），且焦点没落位时盲打会把文本灌进文档正文却仍"看似成功"（正是 A2/A4
+# 要根除的假成功）。轮询到位才注入，超时就诚实 ok=False。
+FOCUS_WAIT_TIMEOUT = 2.5
+FOCUS_POLL_INTERVAL = 0.1
+_FINDER_BUNDLE = "com.apple.finder"
+
+
+def _wait_for_focused_role(roles: tuple[str, ...]) -> bool:
+    """轮询直到当前聚焦元素的 AXRole 命中 roles 之一；超时返回 False。"""
+    import time as _t
+    deadline = _t.monotonic() + FOCUS_WAIT_TIMEOUT
+    while _t.monotonic() < deadline:
+        if ax.focused_element_role() in roles:
+            return True
+        _t.sleep(FOCUS_POLL_INTERVAL)
+    return False
+
+
 async def _do_go_to_folder(session, dom_state, args, planner) -> ActionResult:
     """工作流：保存/打开对话框或 Finder 里，用「前往文件夹」直接跳到 path。
-    内部 cmd+shift+g → 输 path → 回车。把易错的多步序列收成一个可靠动作（A2 教训）。"""
+    内部 cmd+shift+g → 确认前往框已聚焦 → 输 path → 回车。把易错的多步序列收成一个
+    可靠动作（A2 教训）。焦点没落到输入框（如根本不在对话框里）就诚实失败，不假成功。"""
     path = str(args.get("path", "")).strip()
     if not path:
         return ActionResult(ok=False, message="go_to_folder failed: empty path")
 
     def _sync() -> tuple[bool, str]:
-        import time as _t
         if not ax.post_keycode(ax.KEYCODES["g"], cmd=True, shift=True):
             return False, "go_to_folder failed: Cmd+Shift+G post failed"
-        _t.sleep(0.3)  # 让「前往文件夹」小输入框弹出并自动聚焦
+        # 「前往文件夹」小框是文本框/组合框；排除文档正文（AXTextArea）避免把路径灌进正文
+        if not _wait_for_focused_role(("AXTextField", "AXComboBox")):
+            return False, ("go_to_folder failed: 「前往文件夹」输入框未出现/未聚焦"
+                           "——需在保存/打开对话框或 Finder 里用（避免把路径打进别处）")
         ok, msg = _inject_text_sync(path)
         if not ok:
             return False, f"go_to_folder failed: {msg}"
@@ -430,16 +453,23 @@ async def _do_go_to_folder(session, dom_state, args, planner) -> ActionResult:
 
 async def _do_new_folder(session, dom_state, args, planner) -> ActionResult:
     """工作流：在 Finder 当前位置新建名为 name 的文件夹。
-    内部 cmd+shift+n（新文件夹进入可改名态）→ 直接输名字 → 回车（A4 教训）。"""
+    先断言前台确是 Finder（否则 cmd+shift+n 在别的 App 会走偏、把名字灌进文档还假成功）→
+    cmd+shift+n → 确认改名输入框已聚焦 → 输名字 → 回车（A4 教训）。"""
     name = str(args.get("name", "")).strip()
     if not name:
         return ActionResult(ok=False, message="new_folder failed: empty name")
 
     def _sync() -> tuple[bool, str]:
-        import time as _t
+        front = ax.frontmost_app()
+        if front is None or front[2] != _FINDER_BUNDLE:
+            return False, ("new_folder failed: 前台不是 Finder（先 launch_app('Finder')）；"
+                           f"当前前台={front[1] if front else 'none'}")
         if not ax.post_keycode(ax.KEYCODES["n"], cmd=True, shift=True):
             return False, "new_folder failed: Cmd+Shift+N post failed"
-        _t.sleep(0.4)  # 新建的文件夹默认进入名字高亮可编辑状态
+        # 新建文件夹应进入 inline 改名态（一个聚焦的文本框）；Finder 里没有文档正文，
+        # 所以 AXTextField 就绪 = 改名框到位。等不到 = 可能没建成，诚实失败。
+        if not _wait_for_focused_role(("AXTextField",)):
+            return False, "new_folder failed: 新文件夹改名输入框未就绪（可能未成功新建）"
         ok, msg = _inject_text_sync(name)
         if not ok:
             return False, f"new_folder failed: {msg}"

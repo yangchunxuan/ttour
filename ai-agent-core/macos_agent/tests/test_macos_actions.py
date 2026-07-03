@@ -169,27 +169,42 @@ def test_press_key_action_blocked_in_vm(monkeypatch):
 # 复合工作流工具：go_to_folder / new_folder（离线 mock AX 验证按键序列）
 # ================================================================== #
 
-def _record_ax(monkeypatch):
-    """monkeypatch macos.ax 的按键/输入原语，返回调用序列 list。"""
-    from macos import ax
+def _record_ax(monkeypatch, *, frontmost=(1, "Finder", "com.apple.finder"),
+               role="AXTextField", key_ok=True, type_ok=True, clip_ok=True):
+    """monkeypatch macos.ax 的按键/输入/上下文原语，返回调用序列 list。
+
+    默认造「前台是 Finder、焦点已在文本框」的成功上下文；用参数注入反例：
+    frontmost 改前台 App、role 改聚焦控件角色、*_ok 改原语返回值（模拟真机失败）。
+    并把焦点轮询超时压到很短，反例用例不至于真等 2.5s。
+    """
+    from macos import ax, actions
     calls: list = []
 
     def fake_key(code, cmd=False, shift=False, option=False, control=False):
         calls.append(("key", code, cmd, shift))
-        return True
+        return key_ok
 
     def fake_type(text):
         calls.append(("type", text))
-        return True
+        return type_ok
 
     def fake_clip(text):
         calls.append(("clip", text))
-        return True
+        return clip_ok
 
     monkeypatch.setattr(ax, "post_keycode", fake_key)
     monkeypatch.setattr(ax, "type_unicode", fake_type)
     monkeypatch.setattr(ax, "set_clipboard", fake_clip)
+    monkeypatch.setattr(ax, "frontmost_app", lambda: frontmost)
+    monkeypatch.setattr(ax, "focused_element_role", lambda: role)
+    monkeypatch.setattr(actions, "FOCUS_WAIT_TIMEOUT", 0.2)
+    monkeypatch.setattr(actions, "FOCUS_POLL_INTERVAL", 0.02)
     return ax, calls
+
+
+def _ops(calls):
+    """把 calls 压成操作码序列，便于断言顺序（如 ['key','type','key']）。"""
+    return [c[0] for c in calls]
 
 
 def test_go_to_folder_workflow_sequence(monkeypatch):
@@ -198,10 +213,11 @@ def test_go_to_folder_workflow_sequence(monkeypatch):
     res = _run(execute(sess, MacDomState(),
                        {"name": "go_to_folder", "args": {"path": "~/Desktop"}}, None))
     assert res.ok is True
-    # Cmd+Shift+G(keycode g, cmd+shift) → type 路径 → Enter
-    assert ("key", ax.KEYCODES["g"], True, True) in calls
-    assert ("type", "~/Desktop") in calls
-    assert calls[-1] == ("key", ax.KEYCODES["return"], False, False)
+    # 精确顺序：Cmd+Shift+G 必须在 type 之前（顺序颠倒=把路径打进文件名框=A2 假成功根因）
+    assert _ops(calls) == ["key", "type", "key"]
+    assert calls[0] == ("key", ax.KEYCODES["g"], True, True)
+    assert calls[1] == ("type", "~/Desktop")
+    assert calls[2] == ("key", ax.KEYCODES["return"], False, False)
 
 
 def test_new_folder_workflow_sequence(monkeypatch):
@@ -210,10 +226,10 @@ def test_new_folder_workflow_sequence(monkeypatch):
     res = _run(execute(sess, MacDomState(),
                        {"name": "new_folder", "args": {"name": "trip"}}, None))
     assert res.ok is True
-    # Cmd+Shift+N(keycode n, cmd+shift) → type 名字 → Enter
-    assert ("key", ax.KEYCODES["n"], True, True) in calls
-    assert ("type", "trip") in calls
-    assert calls[-1] == ("key", ax.KEYCODES["return"], False, False)
+    assert _ops(calls) == ["key", "type", "key"]
+    assert calls[0] == ("key", ax.KEYCODES["n"], True, True)
+    assert calls[1] == ("type", "trip")
+    assert calls[2] == ("key", ax.KEYCODES["return"], False, False)
 
 
 def test_new_folder_chinese_name_uses_clipboard(monkeypatch):
@@ -222,16 +238,72 @@ def test_new_folder_chinese_name_uses_clipboard(monkeypatch):
     res = _run(execute(sess, MacDomState(),
                        {"name": "new_folder", "args": {"name": "旅游"}}, None))
     assert res.ok is True
-    # 非 ascii → 剪贴板 + Cmd+V（keycode v, cmd）
+    # 非 ascii → 剪贴板 + Cmd+V（keycode v, cmd）；且 Cmd+Shift+N 在最前、Enter 在最后
+    assert calls[0] == ("key", ax.KEYCODES["n"], True, True)
     assert ("clip", "旅游") in calls
     assert ("key", ax.KEYCODES["v"], True, False) in calls
+    assert calls[-1] == ("key", ax.KEYCODES["return"], False, False)
 
+
+# ---- 假成功防线：上下文/焦点不对时必须诚实 ok=False（评审 #1/#2）---- #
+
+def test_new_folder_rejects_when_frontmost_not_finder(monkeypatch):
+    ax, calls = _record_ax(monkeypatch, frontmost=(9, "TextEdit", "com.apple.TextEdit"))
+    sess = _FakeSession(_fake_guard(_vm_runner))
+    res = _run(execute(sess, MacDomState(), {"name": "new_folder", "args": {"name": "x"}}, None))
+    assert res.ok is False and "Finder" in res.message
+    assert calls == []  # 前台不对 → 一个键都不发（不会把名字灌进 TextEdit 文档）
+
+
+def test_go_to_folder_rejects_when_field_never_focused(monkeypatch):
+    # 焦点停在文档正文（AXTextArea）而非前往框 → 不注入、诚实失败
+    ax, calls = _record_ax(monkeypatch, role="AXTextArea")
+    sess = _FakeSession(_fake_guard(_vm_runner))
+    res = _run(execute(sess, MacDomState(),
+                       {"name": "go_to_folder", "args": {"path": "~/Desktop"}}, None))
+    assert res.ok is False and "未出现" in res.message
+    assert ("type", "~/Desktop") not in calls  # 绝不把路径打出去
+
+
+def test_new_folder_rejects_when_rename_field_never_ready(monkeypatch):
+    ax, calls = _record_ax(monkeypatch, role="AXGroup")  # 改名框始终没就绪
+    sess = _FakeSession(_fake_guard(_vm_runner))
+    res = _run(execute(sess, MacDomState(), {"name": "new_folder", "args": {"name": "x"}}, None))
+    assert res.ok is False and "未就绪" in res.message
+    assert ("type", "x") not in calls
+
+
+# ---- 按键/注入失败路径（评审 #5）---- #
+
+def test_go_to_folder_reports_keypost_failure(monkeypatch):
+    ax, calls = _record_ax(monkeypatch, key_ok=False)
+    sess = _FakeSession(_fake_guard(_vm_runner))
+    res = _run(execute(sess, MacDomState(),
+                       {"name": "go_to_folder", "args": {"path": "~/Desktop"}}, None))
+    assert res.ok is False and "Cmd+Shift+G post failed" in res.message
+
+
+def test_new_folder_reports_type_failure(monkeypatch):
+    ax, calls = _record_ax(monkeypatch, type_ok=False)
+    sess = _FakeSession(_fake_guard(_vm_runner))
+    res = _run(execute(sess, MacDomState(), {"name": "new_folder", "args": {"name": "trip"}}, None))
+    assert res.ok is False and "new_folder failed" in res.message
+
+
+# ---- 空参对称拒绝（评审 #13）---- #
 
 def test_go_to_folder_empty_path_rejected(monkeypatch):
     _record_ax(monkeypatch)
     sess = _FakeSession(_fake_guard(_vm_runner))
     res = _run(execute(sess, MacDomState(), {"name": "go_to_folder", "args": {"path": ""}}, None))
     assert res.ok is False and "empty path" in res.message
+
+
+def test_new_folder_empty_name_rejected(monkeypatch):
+    _record_ax(monkeypatch)
+    sess = _FakeSession(_fake_guard(_vm_runner))
+    res = _run(execute(sess, MacDomState(), {"name": "new_folder", "args": {"name": ""}}, None))
+    assert res.ok is False and "empty name" in res.message
 
 
 def test_go_to_folder_guarded_on_real_mac():

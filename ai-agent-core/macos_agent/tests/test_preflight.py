@@ -12,6 +12,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import pytest  # noqa: E402
+
 from macos import preflight  # noqa: E402
 from macos import actions as macos_actions  # noqa: E402
 from macos import prompts as macos_prompts  # noqa: E402
@@ -48,10 +50,52 @@ def test_action_spec_parity_catches_drift(monkeypatch):
     assert c.ok is False and "ghost_action" in c.detail
 
 
+def _only_hard_checks(monkeypatch):
+    """把 CHECKS 收窄到三条静态硬检查，避免 run()/main() 跑真 subprocess(open -Ra)/真 AX。"""
+    monkeypatch.setattr(preflight, "CHECKS", [
+        preflight.check_whitelist_keycodes,
+        preflight.check_prompt_keys_allowed,
+        preflight.check_action_spec_parity,
+    ])
+
+
 def test_hard_failures_and_report_shape(monkeypatch):
+    _only_hard_checks(monkeypatch)
     monkeypatch.setattr(macos_actions, "ALLOWED_COMBOS",
                         set(macos_actions.ALLOWED_COMBOS) | {"cmd+zzz"})
     checks = preflight.run()
     assert preflight.hard_failures(checks)                     # 至少一条硬失败
     assert "❌" in preflight.format_report(checks)             # 报告里标了硬失败
     assert preflight.main() == 1                               # 退出码非 0
+
+
+def test_clean_config_main_exit_zero(monkeypatch):
+    _only_hard_checks(monkeypatch)                             # 真库配置本就干净
+    assert preflight.main() == 0
+
+
+def test_run_agent_check_flag_delegates_to_preflight(monkeypatch):
+    """run_agent.py --check 只跑配置自检并返回它的退出码，不触发 VM 安全硬门。"""
+    import run_agent
+    monkeypatch.setattr(sys, "argv", ["run_agent.py", "--check"])
+    monkeypatch.setattr("macos.preflight.main", lambda: 0)
+    # 若误走了 _preflight() 安全硬门，会因非 VM 环境抛别的错；这里应干净返回 0
+    assert run_agent.main() == 0
+
+
+def test_run_agent_preflight_refuses_on_hard_config_failure(monkeypatch):
+    """配置自检硬失败 → run_agent._preflight() 抛 SystemExit(5)（早退出，不带病启动）。"""
+    import run_agent
+    # 让安全硬门（clean-token/VM 守卫）先放行，单独验配置自检这一段
+    monkeypatch.setattr(run_agent, "consume_clean_token", lambda: (True, ""))
+
+    class _OkGuard:
+        def refusal_reason(self):
+            return ""
+    monkeypatch.setattr(run_agent, "get_guard", lambda: _OkGuard())
+    monkeypatch.setattr(run_agent, "weak_isolation_warnings", lambda: [])
+    bad = preflight.Check("whitelist↔keycode", False, "坏", "修", hard=True)
+    monkeypatch.setattr("macos.preflight.run", lambda: [bad])
+    with pytest.raises(SystemExit) as ei:
+        run_agent._preflight()
+    assert ei.value.code == 5

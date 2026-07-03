@@ -109,6 +109,24 @@ def copy_attr_str(el: Any, attr: str, max_len: int = 400) -> str:
     return ""
 
 
+def focused_element_role() -> str:
+    """当前聚焦元素的 AXRole（读不到 / 无前台 App 返回 ''）。
+
+    复合工具（go_to_folder/new_folder）注入文本前用它确认焦点**真落在输入框**上，
+    而不是盲打——盲打在焦点没落位时会把文本灌进文档正文却仍"看似成功"（假成功）。"""
+    front = frontmost_app()
+    if front is None:
+        return ""
+    try:
+        app_el = create_app_element(front[0])
+        focused = copy_attr(app_el, "AXFocusedUIElement")
+        if focused is None:
+            return ""
+        return copy_attr_str(focused, "AXRole")
+    except Exception:
+        return ""
+
+
 def children_of(el: Any) -> list:
     from ApplicationServices import kAXChildrenAttribute
     kids = copy_attr(el, kAXChildrenAttribute)

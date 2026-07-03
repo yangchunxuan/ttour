@@ -117,6 +117,19 @@ def test_inv_13_flags_prompt_key_not_in_allowlist(tmp_path):
     assert "INV-13" in ids(inv.check_inv_13(tmp_path))
 
 
+def test_inv_13_catches_spaced_and_digit_combo(tmp_path):
+    # 带空格 + 数字结尾的组合键（cmd + 1）也要能被抓到（评审 #9：旧正则漏扫）
+    write(tmp_path / "macos" / "__init__.py", "")
+    write(tmp_path / "macos" / "actions.py",
+          '"""doc"""\nALLOWED_SINGLE_KEYS = {"enter"}\nALLOWED_COMBOS = {"cmd+s"}\n'
+          'def _parse_key(key):\n'
+          '    norm = "".join(key.lower().split())\n'
+          '    return {"k": 1} if norm in {"cmd+s"} else None\n')
+    write(tmp_path / "macos" / "prompts.py",
+          '"""doc"""\ndef get_system_prompt():\n    return "切换请按 cmd + 1 键"\n')
+    assert "INV-13" in ids(inv.check_inv_13(tmp_path))
+
+
 def test_inv_13_ok_when_all_prompt_keys_allowed(tmp_path):
     write(tmp_path / "macos" / "__init__.py", "")
     write(tmp_path / "macos" / "actions.py",
@@ -128,12 +141,29 @@ def test_inv_13_ok_when_all_prompt_keys_allowed(tmp_path):
     assert "INV-13" not in ids(inv.check_inv_13(tmp_path))
 
 
-def test_inv_14_flags_path_in_filename_field(tmp_path):
+def _prompt_repo(tmp_path, body: str) -> None:
     write(tmp_path / "macos" / "__init__.py", "")
     write(tmp_path / "macos" / "prompts.py",
-          '"""doc"""\ndef get_system_prompt():\n'
-          '    return "在文件名输入框输入文件名，可以直接输入完整路径。"\n')
+          f'"""doc"""\ndef get_system_prompt():\n    return {body!r}\n')
+
+
+def test_inv_14_flags_path_in_filename_field(tmp_path):
+    # 含正确的 cmd+shift+g 指引（正向分支过）→ 只有「文件名框可输路径」反模式分支该触发
+    _prompt_repo(tmp_path, "用 cmd+shift+g 定目录；在文件名输入框可以直接输入完整路径。")
     assert "INV-14" in ids(inv.check_inv_14(tmp_path))
+
+
+def test_inv_14_flags_missing_directory_guidance(tmp_path):
+    # 无反模式、也无 go_to_folder/cmd+shift+g → 只有「缺定目录正确做法」分支该触发
+    _prompt_repo(tmp_path, "存文件时点存储按钮即可。")
+    assert "INV-14" in ids(inv.check_inv_14(tmp_path))
+
+
+def test_inv_14_ok_on_compliant_prompt(tmp_path):
+    # 有 cmd+shift+g 定目录、且明确禁止文件名框输路径（含「不可以」否定句不该被误伤）
+    _prompt_repo(tmp_path, "用 cmd+shift+g 定目录；文件名框只填纯文件名不带斜杠，"
+                           "文件名里不可以放完整路径。")
+    assert "INV-14" not in ids(inv.check_inv_14(tmp_path))
 
 
 def test_inv_15_flags_allowlisted_key_without_keycode(tmp_path):

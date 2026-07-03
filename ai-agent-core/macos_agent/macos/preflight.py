@@ -46,8 +46,8 @@ def check_prompt_keys_allowed() -> Check:
     from macos import actions, prompts
     text = prompts.get_system_prompt()
     bad = []
-    for combo in re.findall(r"[A-Za-z]+(?:\+[A-Za-z]+)+", text):
-        norm = combo.lower()
+    for combo in re.findall(r"[A-Za-z]+(?:\s*\+\s*[A-Za-z0-9]+)+", text):
+        norm = re.sub(r"\s+", "", combo.lower())
         if norm.split("+")[0] in {"cmd", "command", "ctrl", "control", "opt", "option", "shift"} \
            and actions._parse_key(norm) is None:
             bad.append(combo)
