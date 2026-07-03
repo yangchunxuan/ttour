@@ -66,3 +66,20 @@ with non-empty or `.utm` path checks.
 
 Every Python module, except empty `__init__.py`, starts with a docstring so
 agents can orient themselves quickly.
+
+## INV-13 Prompt Keys Are In The Allowlist
+
+Every keyboard combo the system prompt tells the model to press (e.g.
+`cmd+shift+g`) must be in `macos.actions.ALLOWED_COMBOS`. Otherwise the prompt
+teaches a key the executor will refuse — the agent follows the advice and
+stalls. Keeps the prompt and the `press_key` allowlist from drifting apart
+(the keyboard analogue of INV-04's action-space single-truth).
+
+## INV-14 Save-To-Directory Flow Is Trap-Safe
+
+Saving to a specific directory must go through `cmd+shift+g` ("Go to Folder")
+to set the directory, then a **plain filename with no `/`** in the name field.
+The prompt must never tell the model it can type a full path into the filename
+field: a `/` there triggers Go-to-Folder and the file silently lands elsewhere —
+the "looks successful but didn't save" false pass caught in A2. Mechanically
+locks that lesson so it cannot regress.

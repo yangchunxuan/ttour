@@ -52,6 +52,9 @@ ALLOWED_SINGLE_KEYS = frozenset({
 })
 ALLOWED_COMBOS = frozenset({
     "cmd+s", "cmd+shift+s", "cmd+a", "cmd+c", "cmd+v", "cmd+n", "cmd+z", "cmd+w",
+    # cmd+shift+g：保存/打开对话框里唤出「前往文件夹」输目录（避免把路径塞进文件名框）
+    # cmd+shift+n：Finder 里新建文件夹
+    "cmd+shift+g", "cmd+shift+n",
 })
 
 

@@ -16,7 +16,7 @@ from typing import Iterable
 
 
 ROOT = Path(__file__).resolve().parents[1]
-INVARIANT_IDS = tuple(f"INV-{i:02d}" for i in range(1, 13))
+INVARIANT_IDS = tuple(f"INV-{i:02d}" for i in range(1, 15))
 
 FIXES = {
     "INV-01": "拆分该文件为多个 <400 行模块，或若确因外部约束不能拆，登记 known_exceptions.yaml 并写理由",
@@ -31,6 +31,8 @@ FIXES = {
     "INV-10": "rm -rf 目标前加路径守卫，防空变量/误删（utm_restore 的教训）",
     "INV-11": "补齐 agent.py 循环消费的字段，缺一个循环就崩（§5）",
     "INV-12": "给该模块加一句 docstring 说明它是干嘛的（agent 靠它建立上下文）",
+    "INV-13": "系统提示词教模型按的组合键必须都在 press_key 白名单（ALLOWED_COMBOS）里；否则模型会被执行器拒绝、原地卡死。补进白名单或改提示词。",
+    "INV-14": "保存到指定目录必须走 cmd+shift+g「前往文件夹」定目录 + 文件名框只填纯文件名（不带 /）；绝不能教模型把路径塞进文件名框（/ 触发 Go-to-Folder → 假成功，A2 教训）。",
 }
 
 SKIP_DIRS = {".git", ".pytest_cache", ".mypy_cache", ".venv", "venv", "__pycache__"}
@@ -347,10 +349,53 @@ def check_inv_12(root: Path) -> list[Finding]:
     return out
 
 
+def check_inv_13(root: Path) -> list[Finding]:
+    """系统提示词教模型按的组合键，必须都在 press_key 白名单里（否则教了个会被拒的键）。"""
+    try:
+        prompts, actions = import_from(root, ["macos.prompts", "macos.actions"])
+        text = prompts.get_system_prompt()
+    except Exception as exc:  # noqa: BLE001
+        return [Finding("INV-13", "macos/prompts.py", 1, f"无法内省系统提示词/动作：{exc}", FIXES["INV-13"])]
+    out, seen = [], set()
+    for combo in re.findall(r"[A-Za-z]+(?:\+[A-Za-z]+)+", text):
+        norm = combo.lower()
+        if not norm.split("+")[0] in {"cmd", "command", "ctrl", "control", "opt", "option", "shift"}:
+            continue  # 只校验修饰键组合，跳过非按键文本
+        if norm in seen:
+            continue
+        seen.add(norm)
+        if actions._parse_key(norm) is None:
+            out.append(Finding("INV-13", "macos/prompts.py", 1,
+                               f"提示词教模型按 {combo!r}，但它不在 press_key 白名单里（会被执行器拒绝）",
+                               FIXES["INV-13"]))
+    return out
+
+
+def check_inv_14(root: Path) -> list[Finding]:
+    """保存到指定目录：禁止「文件名框输路径」反模式；必须含 cmd+shift+g 定目录指引。"""
+    try:
+        (prompts,) = import_from(root, ["macos.prompts"])
+        text = prompts.get_system_prompt()
+    except Exception as exc:  # noqa: BLE001
+        return [Finding("INV-14", "macos/prompts.py", 1, f"无法内省系统提示词：{exc}", FIXES["INV-14"])]
+    out = []
+    # 反模式：教模型「文件名框…可以…（完整）路径」（A2 假成功根因）
+    if re.search(r"文件名[^。\n]{0,30}可以[^。\n]{0,12}(完整路径|路径)", text):
+        out.append(Finding("INV-14", "macos/prompts.py", 1,
+                           "保存指引疑似教模型往文件名框输入路径（/ 触发 Go-to-Folder → 假成功）",
+                           FIXES["INV-14"]))
+    # 正向要求：必须教 cmd+shift+g「前往文件夹」定目录
+    if "cmd+shift+g" not in text.lower():
+        out.append(Finding("INV-14", "macos/prompts.py", 1,
+                           "保存指引缺少 cmd+shift+g「前往文件夹」定目录的正确做法", FIXES["INV-14"]))
+    return out
+
+
 CHECKS = [
     check_inv_01, check_inv_02, check_inv_03, check_inv_04,
     check_inv_05, check_inv_06, check_inv_07, check_inv_08,
     check_inv_09, check_inv_10, check_inv_11, check_inv_12,
+    check_inv_13, check_inv_14,
 ]
 
 

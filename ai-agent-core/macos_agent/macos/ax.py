@@ -27,7 +27,7 @@ KEYCODES = {
     "backspace": 51, "escape": 53, "esc": 53,
     "left": 123, "right": 124, "down": 125, "up": 126,
     "pageup": 116, "pagedown": 121, "home": 115, "end": 119,
-    "a": 0, "s": 1, "c": 8, "v": 9, "n": 45, "z": 6, "w": 13,
+    "a": 0, "s": 1, "c": 8, "v": 9, "n": 45, "z": 6, "w": 13, "g": 5,
 }
 
 

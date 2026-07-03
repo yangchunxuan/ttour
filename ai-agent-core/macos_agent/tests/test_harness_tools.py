@@ -105,6 +105,37 @@ def test_inv_12_flags_missing_module_docstring(tmp_path):
     assert "INV-12" in ids(inv.check_inv_12(tmp_path))
 
 
+def test_inv_13_flags_prompt_key_not_in_allowlist(tmp_path):
+    write(tmp_path / "macos" / "__init__.py", "")
+    write(tmp_path / "macos" / "actions.py",
+          '"""doc"""\nALLOWED_COMBOS = {"cmd+s"}\n'
+          'def _parse_key(key):\n'
+          '    return {"k": key} if key.lower() in ALLOWED_COMBOS else None\n')
+    write(tmp_path / "macos" / "prompts.py",
+          '"""doc"""\ndef get_system_prompt():\n'
+          '    return "存文件用 cmd+shift+q 保存"\n')  # cmd+shift+q 不在白名单
+    assert "INV-13" in ids(inv.check_inv_13(tmp_path))
+
+
+def test_inv_13_ok_when_all_prompt_keys_allowed(tmp_path):
+    write(tmp_path / "macos" / "__init__.py", "")
+    write(tmp_path / "macos" / "actions.py",
+          '"""doc"""\nALLOWED_COMBOS = {"cmd+s"}\n'
+          'def _parse_key(key):\n'
+          '    return {"k": key} if key.lower() in ALLOWED_COMBOS else None\n')
+    write(tmp_path / "macos" / "prompts.py",
+          '"""doc"""\ndef get_system_prompt():\n    return "存文件用 cmd+s 保存"\n')
+    assert "INV-13" not in ids(inv.check_inv_13(tmp_path))
+
+
+def test_inv_14_flags_path_in_filename_field(tmp_path):
+    write(tmp_path / "macos" / "__init__.py", "")
+    write(tmp_path / "macos" / "prompts.py",
+          '"""doc"""\ndef get_system_prompt():\n'
+          '    return "在文件名输入框输入文件名，可以直接输入完整路径。"\n')
+    assert "INV-14" in ids(inv.check_inv_14(tmp_path))
+
+
 def test_lint_knowledge_flags_broken_link_and_invariant_drift(tmp_path):
     write(tmp_path / "AGENTS.md", "[broken](docs/missing.md)\n")
     write(tmp_path / "docs" / "INVARIANTS.md", "# INV-01 only\n")
