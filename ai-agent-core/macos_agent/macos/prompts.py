@@ -50,6 +50,19 @@ ACTION_SPEC: dict[str, dict] = {
         "required": ["app"],
         "desc": "启动（或切换到）白名单里的应用，如 'TextEdit'、'Calculator'、'Finder'。",
     },
+    "go_to_folder": {
+        "args": "path:str",
+        "required": ["path"],
+        "desc": (
+            "在保存/打开对话框或 Finder 里，用「前往文件夹」一步跳到 path 目录"
+            "（如 '~/Desktop'）。内部走 cmd+shift+g，避免把路径塞进文件名框（斜杠会触发跳转）。"
+        ),
+    },
+    "new_folder": {
+        "args": "name:str",
+        "required": ["name"],
+        "desc": "在 Finder 当前位置一步新建名为 name 的文件夹（内部走 cmd+shift+n + 直接改名）。",
+    },
     "close_window": {
         "args": "(无)",
         "required": [],
@@ -142,20 +155,20 @@ def get_system_prompt() -> str:
 ## 存文件到指定目录（保存对话框，务必按这个顺序，别踩坑）
 关键坑：**文件名输入框里绝对不能出现斜杠 `/`**。macOS 会把文件名框里的 `/` 当成
 「前往文件夹」的触发，导致存错地方或存不成——这会造成"看起来成功、其实没存"的假成功。
-正确做法分两步，目录和文件名分开填：
+正确做法（目录和文件名分开）：
 1. press_key 'cmd+s' 唤出保存对话框。
-2. **先定目录**：press_key 'cmd+shift+g' 打开「前往文件夹」小输入框，在它里面 type
-   目标目录路径（如 `~/Desktop` 或 `/Users/xxx/Desktop`，submit=true 回车确认前往）。
+2. **先定目录**：优先用 go_to_folder(path='~/Desktop') 一步跳到目标目录（它内部走
+   cmd+shift+g，可靠且不会踩文件名框的坑）。若手动做，也可 press_key 'cmd+shift+g' 再 type 路径。
 3. **再填文件名**：在文件名输入框 type **只有文件名、不带任何斜杠**的名字（如 `note.txt`）。
 4. 点「存储/Save」按钮，或 press_key 'Enter' 确认。
 5. 若不需要指定目录（用默认位置就行），跳过第 2 步，直接填纯文件名再存。
 - 保存/打开对话框其余部分也是普通控件，照编号点/填即可。
 
 ## 在 Finder 里新建文件夹（A4 类任务）
-1. launch_app 'Finder' 带到前台，必要时先导航到目标位置（可用 cmd+shift+g 前往目录）。
-2. press_key 'cmd+shift+n' 新建一个文件夹——新文件夹会处于**可改名的高亮状态**。
-3. 紧接着直接 type 想要的文件夹名（此时焦点就在名字上，不要先点别处），submit=true 回车确认。
-4. 别用「文件名里带路径」的方式建文件夹；建好后如需再进去用 cmd+shift+g 或双击。
+1. launch_app 'Finder' 带到前台，必要时先用 go_to_folder(path=...) 跳到目标位置。
+2. 用 new_folder(name='我的文件夹') 一步新建并命名（它内部走 cmd+shift+n 再改名）。
+   若手动做：press_key 'cmd+shift+n' 后，新文件夹处于可改名高亮态，紧接着 type 名字 + 回车。
+3. 别用「文件名里带路径」的方式建文件夹。
 
 ## 自我纠错规则（务必遵守）
 - 点错了/走错窗口：用 close_window 关掉误开的窗口，或 launch_app 回到目标应用。

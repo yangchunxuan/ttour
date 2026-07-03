@@ -166,6 +166,83 @@ def test_press_key_action_blocked_in_vm(monkeypatch):
 
 
 # ================================================================== #
+# 复合工作流工具：go_to_folder / new_folder（离线 mock AX 验证按键序列）
+# ================================================================== #
+
+def _record_ax(monkeypatch):
+    """monkeypatch macos.ax 的按键/输入原语，返回调用序列 list。"""
+    from macos import ax
+    calls: list = []
+
+    def fake_key(code, cmd=False, shift=False, option=False, control=False):
+        calls.append(("key", code, cmd, shift))
+        return True
+
+    def fake_type(text):
+        calls.append(("type", text))
+        return True
+
+    def fake_clip(text):
+        calls.append(("clip", text))
+        return True
+
+    monkeypatch.setattr(ax, "post_keycode", fake_key)
+    monkeypatch.setattr(ax, "type_unicode", fake_type)
+    monkeypatch.setattr(ax, "set_clipboard", fake_clip)
+    return ax, calls
+
+
+def test_go_to_folder_workflow_sequence(monkeypatch):
+    ax, calls = _record_ax(monkeypatch)
+    sess = _FakeSession(_fake_guard(_vm_runner))
+    res = _run(execute(sess, MacDomState(),
+                       {"name": "go_to_folder", "args": {"path": "~/Desktop"}}, None))
+    assert res.ok is True
+    # Cmd+Shift+G(keycode g, cmd+shift) → type 路径 → Enter
+    assert ("key", ax.KEYCODES["g"], True, True) in calls
+    assert ("type", "~/Desktop") in calls
+    assert calls[-1] == ("key", ax.KEYCODES["return"], False, False)
+
+
+def test_new_folder_workflow_sequence(monkeypatch):
+    ax, calls = _record_ax(monkeypatch)
+    sess = _FakeSession(_fake_guard(_vm_runner))
+    res = _run(execute(sess, MacDomState(),
+                       {"name": "new_folder", "args": {"name": "trip"}}, None))
+    assert res.ok is True
+    # Cmd+Shift+N(keycode n, cmd+shift) → type 名字 → Enter
+    assert ("key", ax.KEYCODES["n"], True, True) in calls
+    assert ("type", "trip") in calls
+    assert calls[-1] == ("key", ax.KEYCODES["return"], False, False)
+
+
+def test_new_folder_chinese_name_uses_clipboard(monkeypatch):
+    ax, calls = _record_ax(monkeypatch)
+    sess = _FakeSession(_fake_guard(_vm_runner))
+    res = _run(execute(sess, MacDomState(),
+                       {"name": "new_folder", "args": {"name": "旅游"}}, None))
+    assert res.ok is True
+    # 非 ascii → 剪贴板 + Cmd+V（keycode v, cmd）
+    assert ("clip", "旅游") in calls
+    assert ("key", ax.KEYCODES["v"], True, False) in calls
+
+
+def test_go_to_folder_empty_path_rejected(monkeypatch):
+    _record_ax(monkeypatch)
+    sess = _FakeSession(_fake_guard(_vm_runner))
+    res = _run(execute(sess, MacDomState(), {"name": "go_to_folder", "args": {"path": ""}}, None))
+    assert res.ok is False and "empty path" in res.message
+
+
+def test_go_to_folder_guarded_on_real_mac():
+    """复合工具注入键盘 → 在真 Mac（守卫不放行）上被拒，不碰 CGEvent。"""
+    sess = _FakeSession(_fake_guard(_real_mac_runner))
+    res = _run(execute(sess, MacDomState(),
+                       {"name": "go_to_folder", "args": {"path": "~/Desktop"}}, None))
+    assert res.ok is False
+
+
+# ================================================================== #
 # launch_app 白名单
 # ================================================================== #
 

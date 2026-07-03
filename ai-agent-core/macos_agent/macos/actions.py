@@ -388,6 +388,68 @@ async def _do_extract(session, dom_state, args, planner) -> ActionResult:
     return ActionResult(ok=True, message="extracted", extracted=result)
 
 
+def _inject_text_sync(text: str) -> tuple[bool, str]:
+    """把 text 打到**当前已聚焦**的输入框（ascii 走 CGEvent，非 ascii 走剪贴板+Cmd+V）。
+    复合工具用：调用前控件已因组合键自动聚焦，无需再解析编号。"""
+    import time as _t
+    if not text:
+        return True, "empty"
+    if text.isascii():
+        if not ax.type_unicode(text):
+            return False, "text injection failed"
+    else:
+        if not ax.set_clipboard(text):
+            return False, "cannot write clipboard"
+        if not ax.post_keycode(ax.KEYCODES["v"], cmd=True):
+            return False, "Cmd+V failed"
+    _t.sleep(0.1)
+    return True, "ok"
+
+
+async def _do_go_to_folder(session, dom_state, args, planner) -> ActionResult:
+    """工作流：保存/打开对话框或 Finder 里，用「前往文件夹」直接跳到 path。
+    内部 cmd+shift+g → 输 path → 回车。把易错的多步序列收成一个可靠动作（A2 教训）。"""
+    path = str(args.get("path", "")).strip()
+    if not path:
+        return ActionResult(ok=False, message="go_to_folder failed: empty path")
+
+    def _sync() -> tuple[bool, str]:
+        import time as _t
+        if not ax.post_keycode(ax.KEYCODES["g"], cmd=True, shift=True):
+            return False, "go_to_folder failed: Cmd+Shift+G post failed"
+        _t.sleep(0.3)  # 让「前往文件夹」小输入框弹出并自动聚焦
+        ok, msg = _inject_text_sync(path)
+        if not ok:
+            return False, f"go_to_folder failed: {msg}"
+        ax.post_keycode(ax.KEYCODES["return"])
+        return True, f"went to folder {path!r}"
+
+    ok, msg = await asyncio.to_thread(_sync)
+    return ActionResult(ok=ok, message=msg)
+
+
+async def _do_new_folder(session, dom_state, args, planner) -> ActionResult:
+    """工作流：在 Finder 当前位置新建名为 name 的文件夹。
+    内部 cmd+shift+n（新文件夹进入可改名态）→ 直接输名字 → 回车（A4 教训）。"""
+    name = str(args.get("name", "")).strip()
+    if not name:
+        return ActionResult(ok=False, message="new_folder failed: empty name")
+
+    def _sync() -> tuple[bool, str]:
+        import time as _t
+        if not ax.post_keycode(ax.KEYCODES["n"], cmd=True, shift=True):
+            return False, "new_folder failed: Cmd+Shift+N post failed"
+        _t.sleep(0.4)  # 新建的文件夹默认进入名字高亮可编辑状态
+        ok, msg = _inject_text_sync(name)
+        if not ok:
+            return False, f"new_folder failed: {msg}"
+        ax.post_keycode(ax.KEYCODES["return"])
+        return True, f"new folder named {name!r}"
+
+    ok, msg = await asyncio.to_thread(_sync)
+    return ActionResult(ok=ok, message=msg)
+
+
 _HANDLERS = {
     "click": _do_click,
     "type": _do_type,
@@ -397,4 +459,6 @@ _HANDLERS = {
     "launch_app": _do_launch_app,
     "close_window": _do_close_window,
     "extract": _do_extract,
+    "go_to_folder": _do_go_to_folder,
+    "new_folder": _do_new_folder,
 }

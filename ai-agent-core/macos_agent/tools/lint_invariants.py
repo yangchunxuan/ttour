@@ -384,10 +384,11 @@ def check_inv_14(root: Path) -> list[Finding]:
         out.append(Finding("INV-14", "macos/prompts.py", 1,
                            "保存指引疑似教模型往文件名框输入路径（/ 触发 Go-to-Folder → 假成功）",
                            FIXES["INV-14"]))
-    # 正向要求：必须教 cmd+shift+g「前往文件夹」定目录
-    if "cmd+shift+g" not in text.lower():
+    # 正向要求：必须教「前往文件夹」定目录——go_to_folder 工具或 cmd+shift+g 任一即可
+    low = text.lower()
+    if "cmd+shift+g" not in low and "go_to_folder" not in low:
         out.append(Finding("INV-14", "macos/prompts.py", 1,
-                           "保存指引缺少 cmd+shift+g「前往文件夹」定目录的正确做法", FIXES["INV-14"]))
+                           "保存指引缺少定目录的正确做法（go_to_folder 工具或 cmd+shift+g）", FIXES["INV-14"]))
     return out
 
 
