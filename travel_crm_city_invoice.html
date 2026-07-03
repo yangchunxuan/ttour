@@ -1,0 +1,2277 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>旅游客户 CRM｜城市分段报价版</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#F7F8FA;--surface:#FFFFFF;--border:#E8EAF0;
+  --text-primary:#1A1D2E;--text-secondary:#6B7280;--text-hint:#9CA3AF;
+  --blue:#1B4F8A;--blue-ui:#3B6FE8;--blue-light:#EEF2FD;--blue-mid:#C7D5F8;
+  --gold:#B8860B;--green:#1D9E75;--green-light:#E6F5F0;
+  --amber:#D97706;--amber-light:#FEF3C7;
+  --red:#DC2626;--red-light:#FEE2E2;
+  --orange:#EA580C;--orange-light:#FFF0E8;
+  --teal:#0F766E;--teal-light:#E6F5F4;
+  --radius:10px;--radius-lg:14px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text-primary);font-size:14px;min-height:100vh;}
+.view{display:none;}.view.active{display:block;}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.topbar-brand{font-size:15px;font-weight:600;color:var(--text-primary);display:flex;align-items:center;gap:8px;}
+.topbar-brand span{color:var(--blue);}
+.topbar-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:7px 14px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s;white-space:nowrap;}
+.btn-primary{background:var(--blue-ui);color:#fff;}.btn-primary:hover{background:#2D5FD6;}
+.btn-gold{background:var(--gold);color:#fff;}.btn-gold:hover{filter:brightness(.95);}
+.btn-outline{background:transparent;color:var(--text-secondary);border:1px solid var(--border);}.btn-outline:hover{background:var(--bg);}
+.btn-sm{padding:5px 10px;font-size:12px;}
+.btn-danger{background:var(--red-light);color:var(--red);border:none;}.btn-danger:hover{background:#FCA5A5;}
+.btn-green{background:var(--green);color:#fff;}.btn-green:hover{background:#15805E;}
+.dash-header{padding:20px 20px 0;}
+.dash-title{font-size:20px;font-weight:600;margin-bottom:4px;}
+.dash-sub{font-size:13px;color:var(--text-secondary);}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;padding:16px 20px;}
+.stat-card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);padding:16px;}
+.stat-label{font-size:12px;color:var(--text-secondary);margin-bottom:6px;}
+.stat-value{font-size:28px;font-weight:700;line-height:1;}
+.stat-value.blue{color:var(--blue-ui);}.stat-value.green{color:var(--green);}.stat-value.amber{color:var(--amber);}
+.toolbar{padding:0 20px 12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+.search-box{flex:1;min-width:180px;position:relative;}
+.search-box input{width:100%;padding:8px 12px 8px 34px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);outline:none;}
+.search-box input:focus{border-color:var(--blue-ui);}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-hint);}
+.filter-sel{padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);outline:none;cursor:pointer;}
+.client-list{padding:0 20px 80px;}
+.client-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
+.client-card:hover{border-color:var(--blue-mid);box-shadow:0 2px 8px rgba(59,111,232,0.08);}
+.client-card-top{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+.avatar{width:40px;height:40px;border-radius:50%;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;color:var(--blue-ui);flex-shrink:0;}
+.client-name{font-size:15px;font-weight:600;margin-bottom:2px;}
+.client-meta{font-size:12px;color:var(--text-secondary);}
+.client-card-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+.tag{font-size:11px;padding:3px 8px;border-radius:20px;font-weight:500;}
+.tag-A{background:#EEF2FD;color:#2D5FD6;}.tag-B{background:var(--amber-light);color:var(--amber);}
+.tag-C{background:var(--bg);color:var(--text-secondary);border:1px solid var(--border);}
+.tag-status{background:var(--green-light);color:var(--green);}
+.tag-status.amber{background:var(--amber-light);color:var(--amber);}
+.tag-status.blue{background:var(--blue-light);color:var(--blue-ui);}
+.tag-status.gray{background:var(--bg);color:var(--text-secondary);}
+.client-card-bottom{display:flex;align-items:center;justify-content:space-between;}
+.client-date{font-size:12px;color:var(--text-hint);}
+.chevron{color:var(--text-hint);font-size:16px;}
+.empty{text-align:center;padding:60px 20px;color:var(--text-secondary);grid-column:1/-1;}
+.empty-icon{font-size:48px;margin-bottom:12px;opacity:.4;}
+.fab{position:fixed;bottom:24px;right:20px;width:52px;height:52px;border-radius:50%;background:var(--blue-ui);color:#fff;border:none;font-size:24px;cursor:pointer;box-shadow:0 4px 14px rgba(59,111,232,0.35);display:flex;align-items:center;justify-content:center;z-index:50;transition:transform .15s;}
+.fab:hover{transform:scale(1.05);}
+.detail-topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px;min-height:52px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100;}
+.back-btn{background:none;border:none;cursor:pointer;color:var(--blue-ui);font-size:14px;display:flex;align-items:center;gap:4px;padding:6px 0;flex-shrink:0;}
+.detail-topbar-name{font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.detail-topbar-meta{font-size:11.5px;color:var(--text-secondary);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.detail-topbar-info{flex:1;min-width:0;padding:6px 0;}
+.detail-actions{display:flex;gap:8px;}
+.detail-body{padding:16px;padding-bottom:60px;}
+.info-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:14px;}
+.info-card-header{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+.section-title{font-size:13px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px;}
+.client-profile{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.avatar-lg{width:52px;height:52px;border-radius:50%;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:var(--blue-ui);flex-shrink:0;}
+.profile-name{font-size:18px;font-weight:700;margin-bottom:3px;}
+.profile-sub{font-size:13px;color:var(--text-secondary);}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.info-item{background:var(--bg);border-radius:8px;padding:10px 12px;}
+.info-item-label{font-size:11px;color:var(--text-hint);margin-bottom:3px;}
+.info-item-value{font-size:13px;font-weight:500;word-break:break-word;}
+.chips-row{display:flex;gap:6px;flex-wrap:wrap;}
+.chip{font-size:12px;padding:4px 10px;border-radius:20px;background:var(--amber-light);color:var(--amber);font-weight:500;cursor:pointer;}
+.chip-add{background:var(--bg);color:var(--text-hint);border:1px dashed var(--border);}
+.quote-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
+.qtab{font-size:12px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text-secondary);cursor:pointer;}
+.qtab.active{background:var(--blue-ui);color:#fff;border-color:var(--blue-ui);}
+.qtab-add{border-style:dashed;}
+.quote-block{display:none;}.quote-block.active{display:block;}
+.quote-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:10px;background:var(--bg);border-radius:10px;}
+/* City Card */
+.city-card{border:1px solid var(--border);border-radius:12px;background:#fff;margin-bottom:12px;overflow:hidden;}
+.city-head{display:flex;gap:8px;align-items:center;background:linear-gradient(90deg,var(--blue-light),#fff);border-bottom:1px solid var(--border);padding:10px 12px;}
+.city-title-input{flex:1;border:1px solid var(--border);border-radius:7px;padding:7px 9px;font-size:13px;font-weight:600;outline:none;background:#fff;}
+.city-title-input:focus{border-color:var(--blue-ui);}
+.city-body{padding:12px;}
+/* Public pricing section */
+.public-price-section{background:linear-gradient(135deg,#EEF2FD,#F0F9FF);border:1.5px solid var(--blue-mid);border-radius:10px;padding:12px;margin-bottom:12px;}
+.public-price-title{font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;}
+.public-price-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.public-price-item label{font-size:11px;color:var(--text-secondary);display:block;margin-bottom:4px;}
+.pub-input{width:100%;border:1px solid var(--blue-mid);border-radius:7px;padding:7px 9px;font-size:13px;font-weight:600;color:var(--blue);background:#fff;outline:none;text-align:right;}
+.pub-input:focus{border-color:var(--blue-ui);}
+.pub-input.text-input{text-align:left;}
+/* Internal cost section */
+.cost-toggle{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--text-hint);margin-bottom:8px;user-select:none;}
+.cost-toggle:hover{color:var(--text-secondary);}
+.cost-section{display:none;}
+.cost-section.open{display:block;}
+.cost-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.cost-item{background:var(--bg);border-radius:9px;padding:8px;}
+.cost-label{font-size:11px;color:var(--text-secondary);margin-bottom:5px;}
+.cost-input{width:100%;border:1px solid var(--border);border-radius:7px;padding:7px 9px;text-align:right;font-size:13px;background:#fff;outline:none;}
+.cost-input:focus{border-color:var(--blue-ui);}
+.city-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;}
+.summary-box{border-radius:9px;padding:9px 10px;background:var(--bg);}
+.summary-box.cost{background:var(--red-light);}.summary-box.profit{background:var(--orange-light);}.summary-box.suggest{background:var(--amber-light);}
+.summary-label{font-size:11px;color:var(--text-secondary);margin-bottom:4px;}
+.summary-value{font-size:14px;font-weight:700;}
+.summary-value.red{color:var(--red);}.summary-value.orange{color:var(--orange);}.summary-value.amber{color:var(--amber);}
+.city-note{width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--text-primary);background:var(--surface);margin-top:10px;resize:none;outline:none;font-family:inherit;}
+.city-note:focus{border-color:var(--blue-ui);}
+/* Quote totals */
+.quote-total-panel{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px;}
+.total-card{border-radius:12px;padding:12px;background:var(--bg);}
+.total-card.internal{background:var(--red-light);}.total-card.noguide{background:var(--blue-light);}.total-card.withguide{background:var(--green-light);}.total-card.per{background:var(--amber-light);}
+.total-label{font-size:11px;color:var(--text-secondary);margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px;}
+.total-value{font-size:20px;font-weight:800;}
+.total-value.red{color:var(--red);}.total-value.blue{color:var(--blue-ui);}.total-value.green{color:var(--green);}.total-value.amber{color:var(--amber);}
+.quote-note-input{width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--text-primary);background:var(--surface);margin-top:8px;resize:none;outline:none;font-family:inherit;}
+.quote-note-input:focus{border-color:var(--blue-ui);}
+/* Compare table */
+.compare-wrap{overflow-x:auto;margin-top:4px;}
+.compare-table{width:100%;border-collapse:collapse;font-size:12px;min-width:620px;}
+.compare-table th{padding:8px 10px;background:var(--bg);color:var(--text-secondary);font-weight:500;text-align:left;border-bottom:1px solid var(--border);}
+.compare-table td{padding:8px 10px;border-bottom:1px solid var(--border);}
+.compare-table tr:last-child td{border-bottom:none;}
+.diff-up{color:var(--red);font-weight:500;}.diff-dn{color:var(--green);font-weight:500;}
+/* Followup */
+.followup-list{margin-bottom:10px;}
+.followup-item{border-left:2px solid var(--border);padding:8px 0 8px 12px;margin-bottom:10px;}
+.followup-item.pending{border-left-color:var(--amber);}.followup-item.done{border-left-color:var(--green);}
+.fu-date{font-size:11px;color:var(--text-hint);margin-bottom:3px;}
+.fu-content{font-size:13px;margin-bottom:4px;}
+.fu-feedback{font-size:12px;color:var(--text-secondary);}
+.fu-todo{font-size:12px;color:var(--amber);font-weight:500;}
+.add-followup-form{background:var(--bg);border-radius:10px;padding:12px;margin-top:4px;}
+.form-row{margin-bottom:10px;}
+.form-label{font-size:12px;color:var(--text-secondary);margin-bottom:4px;display:block;}
+.form-input{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;color:var(--text-primary);background:var(--surface);outline:none;font-family:inherit;}
+.form-input:focus{border-color:var(--blue-ui);}
+.form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:flex-end;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-width:620px;max-height:90vh;overflow-y:auto;padding:20px;}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:16px;}
+.modal-footer{display:flex;gap:10px;margin-top:16px;}
+.helper-text{font-size:12px;color:var(--text-hint);line-height:1.5;margin-top:6px;}
+@media(min-width:600px){
+  .stats-grid{grid-template-columns:repeat(4,1fr);}
+  .info-grid{grid-template-columns:repeat(3,1fr);}
+  .modal-overlay{align-items:center;}
+  .modal{border-radius:16px;margin:16px;}
+}
+@media(min-width:900px){
+  .client-list{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .client-list .client-card{margin-bottom:0;}
+}
+@media(max-width:760px){
+  .detail-actions{display:none;}
+  .public-price-grid{grid-template-columns:1fr;}
+  .cost-grid{grid-template-columns:1fr;}
+  .city-summary,.quote-total-panel{grid-template-columns:1fr 1fr;}
+  .topbar{height:auto;min-height:52px;padding:8px 14px;align-items:flex-start;}
+  .topbar-actions{justify-content:flex-end;}
+}
+@media(max-width:520px){
+  .info-grid,.form-row-2,.city-summary,.quote-total-panel{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<div id="view-list" class="view active">
+  <div class="topbar">
+    <div class="topbar-brand">✈ <span>旅游</span>CRM</div>
+    <div class="topbar-actions">
+      <button class="btn btn-outline btn-sm" onclick="exportJSON()">导出JSON</button>
+      <button class="btn btn-outline btn-sm" onclick="exportCSV()">导出CSV</button>
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-input').click()">导入</button>
+      <button class="btn btn-outline btn-sm" style="color:#DC2626;border-color:#DC2626" onclick="clearAllData()">清除数据</button>
+      <button class="btn btn-primary btn-sm" onclick="openSyncModal()">📱 多设备同步</button>
+      <input type="file" id="import-input" accept=".json" style="display:none" onchange="importJSON(event)">
+    </div>
+  </div>
+  <div class="dash-header">
+    <div class="dash-title">客户总览</div>
+    <div class="dash-sub" id="dash-date"></div>
+  </div>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-label">总客户数</div><div class="stat-value blue" id="s-total">0</div></div>
+    <div class="stat-card"><div class="stat-label">已成交</div><div class="stat-value green" id="s-done">0</div></div>
+    <div class="stat-card"><div class="stat-label">报价中</div><div class="stat-value amber" id="s-quote">0</div></div>
+    <div class="stat-card"><div class="stat-label">意向A级</div><div class="stat-value blue" id="s-a">0</div></div>
+  </div>
+  <div class="toolbar">
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text" placeholder="搜索客户姓名、国家、渠道..." id="search-input" oninput="renderList()">
+    </div>
+    <select class="filter-sel" id="filter-status" onchange="renderList()">
+      <option value="">全部状态</option>
+      <option>初次接触</option><option>报价中</option><option>行程确认</option><option>已成交</option><option>暂缓</option>
+    </select>
+    <select class="filter-sel" id="filter-level" onchange="renderList()">
+      <option value="">全部等级</option>
+      <option>A</option><option>B</option><option>C</option>
+    </select>
+  </div>
+  <div class="client-list" id="client-list"></div>
+  <button class="fab" onclick="openNewClient()">＋</button>
+</div>
+
+<div id="view-detail" class="view">
+  <div class="detail-topbar">
+    <button class="back-btn" onclick="showList()">← 返回</button>
+    <div class="detail-topbar-info">
+      <div class="detail-topbar-name" id="detail-topbar-name"></div>
+      <div class="detail-topbar-meta" id="detail-topbar-meta"></div>
+    </div>
+    <div class="detail-actions">
+      <button class="btn btn-gold btn-sm" onclick="generateInvoicePDF()">生成客户报价单PDF</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteClient()">删除</button>
+    </div>
+  </div>
+  <div class="detail-body" id="detail-body"></div>
+</div>
+
+<!-- 新增/编辑客户 Modal -->
+<div class="modal-overlay" id="modal-client">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">新增客户</div>
+    <button class="btn btn-outline btn-sm" style="width:100%;margin-bottom:12px;border-style:dashed;color:#0070C0;border-color:#0070C0" onclick="openPasteModal()">📋 粘贴对话内容，自动识别填入</button>
+    <div class="form-row">
+      <label class="form-label">客户姓名 *</label>
+      <input class="form-input" id="f-name" placeholder="如：Leticia / Annette Hayden">
+    </div>
+    <div class="form-row-2">
+      <div class="form-row" style="margin:0">
+        <label class="form-label">所属国家/城市</label>
+        <input class="form-input" id="f-country" placeholder="如：美国·洛杉矶">
+      </div>
+      <div class="form-row" style="margin:0">
+        <label class="form-label">主要跟进方式</label>
+        <select class="form-input" id="f-contact-channel">
+          <option value="">请选择</option>
+          <option>Messenger</option><option>WhatsApp</option><option>Instagram</option><option>邮箱</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row-2">
+      <div class="form-row" style="margin:0">
+        <label class="form-label">出行人数</label>
+        <input class="form-input" id="f-pax" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="4">
+      </div>
+      <div class="form-row" style="margin:0">
+        <label class="form-label">行程天数</label>
+        <input class="form-input" id="f-days" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="17">
+      </div>
+    </div>
+    <div class="form-row-2" style="grid-template-columns:1fr 1fr 1fr">
+      <div class="form-row" style="margin:0">
+        <label class="form-label">成人人数</label>
+        <input class="form-input" id="f-pax-adults" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="2" oninput="syncPaxTotal()">
+      </div>
+      <div class="form-row" style="margin:0">
+        <label class="form-label">儿童人数</label>
+        <input class="form-input" id="f-pax-children" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="0" oninput="syncPaxTotal()">
+      </div>
+      <div class="form-row" style="margin:0">
+        <label class="form-label">老人人数</label>
+        <input class="form-input" id="f-pax-seniors" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="0" oninput="syncPaxTotal()">
+      </div>
+    </div>
+    <div class="form-row">
+      <label class="form-label">人员备注（儿童年龄等，仅内部记录）</label>
+      <input class="form-input" id="f-pax-detail" placeholder="如：儿童年龄 6、8岁">
+    </div>
+    <div class="form-row">
+      <label class="form-label">目标出行时间</label>
+      <input class="form-input" id="f-travel-time" placeholder="如：September 2026">
+    </div>
+    <div class="form-row">
+      <label class="form-label">路线 / 进出港安排</label>
+      <input class="form-input" id="f-route" placeholder="如：广州 → 张家界 → 重庆 → 成都">
+    </div>
+    <div class="form-row">
+      <label class="form-label">导游方案</label>
+      <select class="form-input" id="f-guide">
+        <option value="">请选择</option>
+        <option>中文导游</option><option>关键日英文导游</option><option>全程英文导游</option>
+      </select>
+    </div>
+    <div class="form-row-2" style="margin-bottom:10px">
+      <div>
+        <label class="form-label">意向等级</label>
+        <select class="form-input" id="f-level">
+          <option value="">请选择</option>
+          <option>A</option><option>B</option><option>C</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">当前跟进状态</label>
+        <select class="form-input" id="f-status">
+          <option value="">请选择</option>
+          <option>初次接触</option><option>报价中</option><option>行程确认</option><option>已成交</option><option>暂缓</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <label class="form-label">备注</label>
+      <input class="form-input" id="f-note" placeholder="快速备注">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" style="flex:1" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" style="flex:2" onclick="saveClient()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 智能粘贴 Modal -->
+<div class="modal-overlay" id="modal-paste">
+  <div class="modal" style="max-width:540px">
+    <div class="modal-title">📋 智能粘贴录入</div>
+    <p style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">将对话记录或客户信息粘贴到下方，系统自动识别并填入表单字段（含跟进记录）。</p>
+    <textarea id="paste-input" class="form-input" rows="12" placeholder="粘贴客户信息或对话摘要，例如：
+客户姓名：Dong Pepe
+跟进方式：Messenger
+出行人数：7人
+人员构成：6位成人 + 1位儿童
+目标出行时间：November 2026
+意向路线：Zhangjiajie only
+初步行程天数：5D4N
+当前状态：报价中
+意向等级：B
+备注：预算敏感，优先推荐便宜方案
+
+跟进记录 1
+跟进日期：2026-06-30
+跟进方式：Messenger
+跟进内容摘要：...
+客户反馈：...
+待办事项：...
+下次跟进日期：2026-07-01" style="font-size:12px;line-height:1.6;resize:vertical"></textarea>
+    <div id="paste-preview" style="display:none;margin-top:10px;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:6px;padding:10px;font-size:12px;line-height:1.8"></div>
+    <div class="modal-footer" style="margin-top:12px">
+      <button class="btn btn-outline" style="flex:1" onclick="document.getElementById('modal-paste').classList.remove('open')">取消</button>
+      <button class="btn btn-outline" style="flex:1" onclick="previewPaste()">👁 预览识别</button>
+      <button class="btn btn-primary" style="flex:2" onclick="applyPaste()">✓ 填入表单</button>
+    </div>
+  </div>
+</div>
+
+<!-- 跟进记录粘贴 Modal -->
+<div class="modal-overlay" id="modal-fu-paste">
+  <div class="modal" style="max-width:540px">
+    <div class="modal-title">📋 粘贴跟进内容自动识别</div>
+    <p style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">粘贴对话摘要，自动填入跟进日期、内容、客户反馈、待办事项、下次跟进日期。</p>
+    <textarea id="fu-paste-input" class="form-input" rows="10" placeholder="例如：
+跟进日期：2026-06-30
+跟进方式：Messenger
+跟进内容摘要：客户询问张家界行程报价，表示预算敏感...
+客户反馈：客户倾向5D4N方案
+待办事项：准备报价单发给客户
+下次跟进日期：2026-07-03" style="font-size:12px;line-height:1.6;resize:vertical"></textarea>
+    <div class="modal-footer" style="margin-top:12px">
+      <button class="btn btn-outline" style="flex:1" onclick="document.getElementById('modal-fu-paste').classList.remove('open')">取消</button>
+      <button class="btn btn-primary" style="flex:2" onclick="applyFuPaste()">✓ 填入表单</button>
+    </div>
+  </div>
+</div>
+
+<!-- 多设备同步 Modal -->
+<div class="modal-overlay" id="modal-sync">
+  <div class="modal">
+    <div class="modal-title">📱 多设备同步</div>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">数据保存在本设备浏览器中。需要手机/其他电脑同步时，复制同步码在另一台设备导入。</p>
+    <div class="form-row">
+      <label class="form-label">本设备同步码（复制后粘贴到另一台设备）</label>
+      <textarea class="form-input" id="sync-export-code" rows="3" readonly style="font-family:monospace;font-size:11px;word-break:break-all;"></textarea>
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-bottom:14px" onclick="copySyncCode()">复制同步码</button>
+    <div class="form-row">
+      <label class="form-label">粘贴另一台设备的同步码</label>
+      <textarea class="form-input" id="sync-import-code" rows="3" placeholder="在此粘贴同步码..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" style="flex:1" onclick="document.getElementById('modal-sync').classList.remove('open')">关闭</button>
+      <button class="btn btn-green" style="flex:2" onclick="importSyncCode()">导入同步</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let clients = [];
+let currentId = null;
+let editingId = null;
+let activeQuoteIndex = 0;
+
+const COST_ITEMS = [
+  {key:'hotel', label:'酒店住宿'},
+  {key:'tickets', label:'景点门票'},
+  {key:'intercity', label:'城市间交通'},
+  {key:'car', label:'当地包车'},
+  {key:'misc', label:'餐食/体验/杂费'}
+];
+
+const STATUS_COLOR = {'初次接触':'blue','报价中':'amber','行程确认':'blue','已成交':'','暂缓':'gray'};
+const CONTACT_OPTIONS = ['Messenger','WhatsApp','Instagram','邮箱'];
+const CURRENCY_SYMBOL = {
+  USD:'$', CAD:'CA$', AUD:'A$', NZD:'NZ$', SGD:'S$',
+  EUR:'€', GBP:'£', AED:'AED ', CNY:'¥', HKD:'HK$',
+  THB:'฿', MYR:'RM', PHP:'₱', JPY:'¥'
+};
+
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function parseNum(v){ const n=parseFloat(v); return isNaN(n)?0:n; }
+function getSymbol(c){ return CURRENCY_SYMBOL[c]||c+' '; }
+function fmt(v,c){ const n=parseNum(v); if(!n)return '—'; return getSymbol(c)+Math.round(n).toLocaleString(); }
+function fmtA(v,c){ return getSymbol(c)+Math.round(parseNum(v)).toLocaleString(); }
+function escapeHTML(s){ return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+
+function emptyCosts(){ const o={}; COST_ITEMS.forEach(i=>o[i.key]=''); return o; }
+function costsFromArray(arr){
+  const o=emptyCosts();
+  COST_ITEMS.forEach((item,idx)=>{ o[item.key]=Array.isArray(arr)?(arr[idx]||''):''; });
+  return o;
+}
+function normalizeCity(city){
+  if(!city) city={};
+  if(Array.isArray(city.costs)) city.costs=costsFromArray(city.costs);
+  if(!city.costs) city.costs=emptyCosts();
+  COST_ITEMS.forEach(i=>{ if(city.costs[i.key]===undefined) city.costs[i.key]=''; });
+  if(!city.id) city.id=uid();
+  if(city.name===undefined) city.name='';
+  if(city.itinerary===undefined) city.itinerary='';
+  if(city.priceNoGuide===undefined) city.priceNoGuide='';
+  if(city.priceWithGuide===undefined) city.priceWithGuide='';
+  if(city.priceAdult===undefined) city.priceAdult=city.priceNoGuide||'';
+  if(city.priceChild===undefined) city.priceChild='';
+  if(city.priceSenior===undefined) city.priceSenior='';
+  if(city.profit===undefined) city.profit='';
+  if(city.note===undefined) city.note='';
+  return city;
+}
+function parsePaxCounts(paxDetail, fallbackPax){
+  let adults=0, children=0, seniors=0;
+  if(paxDetail){
+    // Chinese: 2大人 / 2小孩 / 2老人
+    const amCN=paxDetail.match(/(\d+)\s*大人/);
+    const cmCN=paxDetail.match(/(\d+)\s*(?:位\s*)?(?:小孩|儿童)/);
+    const smCN=paxDetail.match(/(\d+)\s*(?:位\s*)?(?:老人|长者)/);
+    // English: 2 adults / 2 children / 2 kids / 2 seniors
+    const amEN=paxDetail.match(/(\d+)\s*adults?/i);
+    const cmEN=paxDetail.match(/(\d+)\s*(?:children|childs?|kids?)/i);
+    const smEN=paxDetail.match(/(\d+)\s*seniors?/i);
+    if(amCN) adults=parseInt(amCN[1]);
+    else if(amEN) adults=parseInt(amEN[1]);
+    // handle "2 + 3儿童" or "2＋3儿童" — number before + is adults
+    if(!adults){ const pm=paxDetail.match(/(\d+)\s*[+＋]/); if(pm) adults=parseInt(pm[1]); }
+    if(cmCN) children=parseInt(cmCN[1]);
+    else if(cmEN) children=parseInt(cmEN[1]);
+    if(smCN) seniors=parseInt(smCN[1]);
+    else if(smEN) seniors=parseInt(smEN[1]);
+  }
+  const total=adults+children+seniors;
+  if(total===0){ adults=fallbackPax||1; }
+  else if(fallbackPax && total<fallbackPax){ adults+=fallbackPax-total; }
+  return {adults, children, seniors};
+}
+function normalizeTransport(t){
+  if(!t) t={};
+  if(!t.id) t.id=uid();
+  if(t.route===undefined) t.route='';
+  if(t.type===undefined) t.type='';
+  if(t.seatClass===undefined) t.seatClass='';
+  if(t.price===undefined) t.price='';
+  // 高铁/火车儿童票
+  if(t.childFree===undefined) t.childFree='';        // 未满6岁，无座免票
+  if(t.childHalf===undefined) t.childHalf='';        // 6-14岁，有座半价
+  if(t.childFull===undefined) t.childFull='';        // 14岁及以上，全价
+  if(t.childHalfPrice===undefined) t.childHalfPrice='';
+  // 飞机儿童票
+  if(t.childInfant===undefined) t.childInfant='';    // 出生-2岁，成人票×10%
+  if(t.childFlight===undefined) t.childFlight='';    // 2-12岁，半价
+  if(t.childFlightFull===undefined) t.childFlightFull=''; // 12岁及以上，全价
+  if(t.childInfantPrice===undefined) t.childInfantPrice='';
+  if(t.childFlightPrice===undefined) t.childFlightPrice='';
+  if(t.childTicket!==undefined){ delete t.childTicket; }
+  if(t.childPrice!==undefined){ delete t.childPrice; }
+  return t;
+}
+function normalizeQuote(q){
+  if(!q) q={};
+  if(!q.currency) q.currency='USD';
+  if(!q.date) q.date=new Date().toISOString().slice(0,10);
+  if(!Array.isArray(q.cities)){
+    q.cities=[{id:uid(),name:'',itinerary:'',priceNoGuide:'',priceWithGuide:'',costs:costsFromArray(q.costs||[]),profit:q.profit||'',note:q.note||''}];
+  }
+  q.cities=q.cities.map(normalizeCity);
+  if(q.note===undefined) q.note='';
+  if(q.guideType===undefined) q.guideType='';
+  if(q.guidePrice===undefined) q.guidePrice='';
+  if(q.guidePriceCN===undefined) q.guidePriceCN='';
+  if(q.guidePriceKeyEN===undefined) q.guidePriceKeyEN='';
+  if(q.guidePriceFullEN===undefined) q.guidePriceFullEN='';
+  if(q.selectedGuide===undefined) q.selectedGuide=''; // 'CN' | 'KeyEN' | 'FullEN' | ''
+  if(!Array.isArray(q.transports)) q.transports=[];
+  q.transports=q.transports.map(normalizeTransport);
+  return q;
+}
+function normalizeClient(c){
+  if(!c.id) c.id=uid();
+  if(!Array.isArray(c.quotes)) c.quotes=[];
+  c.quotes=c.quotes.map(normalizeQuote);
+  if(!Array.isArray(c.needs)) c.needs=[];
+  if(!Array.isArray(c.followups)) c.followups=[];
+  if(!Array.isArray(c.itineraries)) c.itineraries=[];
+  if(!c.createdAt) c.createdAt=new Date().toLocaleDateString('zh-CN');
+  if(c.contactChannel===undefined) c.contactChannel='';
+  if(c.paxAdults===undefined) c.paxAdults='';
+  if(c.paxChildren===undefined) c.paxChildren='';
+  if(c.paxSeniors===undefined) c.paxSeniors='';
+  return c;
+}
+function load(){
+  try{ clients=JSON.parse(localStorage.getItem('tcrm_clients')||'[]'); }catch(e){ clients=[]; }
+  clients=clients.map(normalizeClient); save();
+}
+function save(){ localStorage.setItem('tcrm_clients',JSON.stringify(clients)); }
+
+function calcCity(city){
+  city=normalizeCity(city);
+  const cost=COST_ITEMS.reduce((s,i)=>s+parseNum(city.costs[i.key]),0);
+  const profit=parseNum(city.profit);
+  const suggested=cost+profit;
+  return {cost,profit,suggested};
+}
+function getClientPax(c){
+  const a=parseInt(c&&c.paxAdults)||0;
+  const ch=parseInt(c&&c.paxChildren)||0;
+  const s=parseInt(c&&c.paxSeniors)||0;
+  const total=a+ch+s;
+  if(total>0) return {adults:a,children:ch,seniors:s,total};
+  const fallback=parseInt(c&&c.pax)||1;
+  return {adults:fallback,children:0,seniors:0,total:fallback};
+}
+function calcQuoteTotals(q, pax){
+  q=normalizeQuote(q);
+  if(!pax) pax={adults:1,children:0,seniors:0,total:1};
+  let cost=0, cityPerAdult=0, cityGroupTotal=0, transTotal=0;
+  q.cities.forEach(city=>{
+    cost+=calcCity(city).cost;
+    const ap=parseNum(city.priceAdult||city.priceNoGuide);
+    const cp=parseNum(city.priceChild);
+    const sp=parseNum(city.priceSenior);
+    cityPerAdult+=ap;
+    cityGroupTotal+=ap*pax.adults+cp*pax.children+sp*pax.seniors;
+  });
+  let guideTotal=0;
+  if(q.selectedGuide==='CN') guideTotal=parseNum(q.guidePriceCN);
+  else if(q.selectedGuide==='KeyEN') guideTotal=parseNum(q.guidePriceKeyEN);
+  else if(q.selectedGuide==='FullEN') guideTotal=parseNum(q.guidePriceFullEN);
+  else guideTotal=parseNum(q.guidePrice)||0; // fallback for legacy data
+  q.transports.forEach(t=>{
+    const ap=parseNum(t.price);
+    if(isFlightTransport(t.type)){
+      const infantP=parseNum(t.childInfantPrice)||(ap*0.1);
+      const flightP=parseNum(t.childFlightPrice)||(ap*0.5);
+      const nInfant=parseInt(t.childInfant)||0;
+      const nFlight=parseInt(t.childFlight)||0;
+      const nFlightFull=parseInt(t.childFlightFull)||0;
+      transTotal+=ap*pax.adults+ap*pax.seniors+infantP*nInfant+flightP*nFlight+ap*nFlightFull;
+    } else {
+      const halfPrice=parseNum(t.childHalfPrice)||(ap*0.5);
+      const nFree=parseInt(t.childFree)||0;
+      const nHalf=parseInt(t.childHalf)||0;
+      const nFull=parseInt(t.childFull)||0;
+      transTotal+=ap*pax.adults+ap*pax.seniors+halfPrice*nHalf+ap*nFull;
+    }
+  });
+  const grandTotal=cityGroupTotal+guideTotal+transTotal;
+  const totalCost=cost+guideTotal+transTotal; // city cost + guide + transport (all at face value)
+  const markup=cityGroupTotal-cost; // profit only from city markup
+  const markupPct=cost>0?Math.round(markup/cost*100):0;
+  return {cost, totalCost, cityTotal:cityPerAdult, cityGroupTotal, guideTotal, transTotal, grandTotal, markup, markupPct};
+}
+function latestQuote(c){ if(!c||!c.quotes||!c.quotes.length)return null; return c.quotes[c.quotes.length-1]; }
+function getClient(){ return clients.find(x=>x.id===currentId); }
+
+function updateStats(){
+  document.getElementById('s-total').textContent=clients.length;
+  document.getElementById('s-done').textContent=clients.filter(c=>c.status==='已成交').length;
+  document.getElementById('s-quote').textContent=clients.filter(c=>c.status==='报价中').length;
+  document.getElementById('s-a').textContent=clients.filter(c=>c.level==='A').length;
+  const d=new Date();
+  document.getElementById('dash-date').textContent=d.toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
+}
+
+function isTravelUrgent(travelTime){
+  if(!travelTime) return false;
+  const now=new Date();
+  const nowY=now.getFullYear(), nowM=now.getMonth()+1;
+  const text=travelTime.toLowerCase();
+  const eng=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+  const found=[];
+  eng.forEach((m,i)=>{ if(text.includes(m)) found.push({m:i+1,y:nowY}); });
+  for(let m=1;m<=12;m++){ if(text.includes(m+'月')||text.includes(m+'月份')) found.push({m,y:nowY}); }
+  // detect explicit year
+  const yMatch=travelTime.match(/20(\d\d)/);
+  const explicitY=yMatch?parseInt(yMatch[0]):null;
+  for(const f of found){
+    const fy=explicitY||( f.m<nowM ? nowY+1 : nowY );
+    const diff=(fy-nowY)*12+(f.m-nowM);
+    if(diff>=0&&diff<=3) return true;
+  }
+  return false;
+}
+function renderList(){
+  const q=document.getElementById('search-input').value.toLowerCase();
+  const st=document.getElementById('filter-status').value;
+  const lv=document.getElementById('filter-level').value;
+  let list=clients.filter(c=>{
+    const t=[c.name,c.country,c.contactChannel,c.paxDetail,c.route].join(' ').toLowerCase();
+    if(q&&!t.includes(q))return false;
+    if(st&&c.status!==st)return false;
+    if(lv&&c.level!==lv)return false;
+    return true;
+  });
+  const el=document.getElementById('client-list');
+  if(!list.length){ el.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><p>暂无客户，点击右下角 ＋ 添加</p></div>`; updateStats(); return; }
+  el.innerHTML=list.map(c=>{
+    const initials=(c.name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const lastF=(c.followups||[]).slice(-1)[0];
+    const dateStr=lastF?'最近跟进：'+lastF.date:(c.createdAt||'');
+    const sc=STATUS_COLOR[c.status]||'';
+    const lq=latestQuote(c);
+    const tot=lq?calcQuoteTotals(lq,getClientPax(c)):{grandTotal:0,cityGroupTotal:0};
+    const urgent=isTravelUrgent(c.travelTime);
+    const urgentStyle=urgent?'border:2px solid #F59E0B;background:linear-gradient(135deg,#FFFBEB 0%,#ffffff 60%);box-shadow:0 2px 12px rgba(245,158,11,.18);':'';
+    const needsAction=c.status!=='已成交'&&c.status!=='暂缓';
+    return `<div class="client-card" onclick="showDetail('${c.id}')" style="${urgentStyle}">
+      <div class="client-card-top">
+        <div style="position:relative;flex-shrink:0">
+          <div class="avatar">${escapeHTML(initials)}</div>
+          ${needsAction?'<span style="position:absolute;top:0;right:0;width:10px;height:10px;background:#EF4444;border-radius:50%;border:2px solid #fff"></span>':''}
+        </div>
+        <div style="flex:1">
+          <div class="client-name">${escapeHTML(c.name||'未命名')}${urgent?' <span style="font-size:11px;background:#F59E0B;color:#fff;border-radius:4px;padding:1px 5px;font-weight:600;vertical-align:middle">⚡ 近期出行</span>':''}</div>
+          <div class="client-meta">${escapeHTML(c.country||'')} ${c.paxDetail?'· '+escapeHTML(c.paxDetail):''}</div>
+        </div>
+        <span class="chevron">›</span>
+      </div>
+      <div class="client-card-tags">
+        ${c.level?`<span class="tag tag-${escapeHTML(c.level)}">${escapeHTML(c.level)}级</span>`:''}
+        ${c.status?`<span class="tag tag-status ${sc}">${escapeHTML(c.status)}</span>`:''}
+        ${c.contactChannel?`<span class="tag" style="background:var(--blue-light);color:var(--blue-ui)">${escapeHTML(c.contactChannel)}</span>`:''}
+        ${c.travelTime?`<span class="tag" style="background:${urgent?'#FEF3C7;color:#92400E':'var(--teal-light);color:var(--teal)'}">📅 ${escapeHTML(c.travelTime)}</span>`:''}
+        ${tot.grandTotal?`<span class="tag" style="background:var(--green-light);color:var(--green)">报价 ${fmtA(tot.grandTotal,lq.currency)}</span>`:''}
+      </div>
+      <div class="client-card-bottom">
+        <span class="client-date">${escapeHTML(dateStr)}</span>
+      </div>
+    </div>`;
+  }).join('');
+  updateStats();
+}
+
+function showDetail(id){
+  currentId=id; activeQuoteIndex=0;
+  const c=clients.find(x=>x.id===id); if(!c)return;
+  document.getElementById('view-list').classList.remove('active');
+  document.getElementById('view-detail').classList.add('active');
+  document.getElementById('detail-topbar-name').textContent=c.name||'';
+  // 组装第二行：人数 | 路线 | 天数
+  const metaParts=[];
+  const pax=getClientPax(c);
+  const paxStr=[pax.adults?pax.adults+' adult'+(pax.adults>1?'s':''):'',
+    pax.children?pax.children+' child'+(pax.children===1?'':'ren'):'',
+    pax.seniors?pax.seniors+' senior'+(pax.seniors>1?'s':''):''].filter(Boolean).join(' + ');
+  if(paxStr) metaParts.push('👥 '+paxStr);
+  if(c.route) metaParts.push('🗺️ '+c.route);
+  if(c.days) metaParts.push('📅 '+c.days+'天');
+  else if(c.travelTime) metaParts.push('📅 '+c.travelTime);
+  document.getElementById('detail-topbar-meta').textContent=metaParts.join('   |   ');
+  renderDetail(c);
+}
+
+function renderDetail(c){
+  c=normalizeClient(c); save();
+  const initials=(c.name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const quotes=c.quotes||[];
+  const followups=c.followups||[];
+
+  let quoteTabs=quotes.map((q,i)=>`<span style="display:inline-flex;align-items:center;gap:2px">
+    <button class="qtab${i===activeQuoteIndex?' active':''}" onclick="switchQTab(${i})" style="border-radius:20px 0 0 20px;border-right:none;padding-right:8px">第${i+1}次报价</button><button onclick="deleteQuote(${i})" title="删除此报价" style="font-size:11px;padding:5px 7px;border-radius:0 20px 20px 0;border:1px solid var(--border);border-left:none;background:transparent;cursor:pointer;color:var(--text-hint);line-height:1" onmouseover="this.style.background='#FEE2E2';this.style.color='#DC2626'" onmouseout="this.style.background='transparent';this.style.color='var(--text-hint)'">×</button>
+  </span>`).join('');
+  quoteTabs+=`<button class="qtab qtab-add" onclick="addQuote()">＋ 新增报价</button>`;
+
+  const clientPax=getClientPax(c);
+  let quoteBlocks=quotes.map((q,i)=>buildQuoteBlock(q,i,clientPax,c)).join('');
+  if(!quotes.length) quoteBlocks=`<div style="text-align:center;padding:20px;color:var(--text-hint);font-size:13px;">暂无报价，点击「新增报价」开始添加</div>`;
+
+  let compareRows=quotes.map((q,i)=>{
+    const r=calcQuoteTotals(q,clientPax);
+    const prev=i>0?calcQuoteTotals(quotes[i-1],clientPax).grandTotal:null;
+    const diff=prev!==null&&r.grandTotal?r.grandTotal-prev:null;
+    const diffHtml=diff===null?'—':diff>0?`<span class="diff-up">+${fmtA(diff,q.currency)}</span>`:diff<0?`<span class="diff-dn">-${fmtA(Math.abs(diff),q.currency)}</span>`:'持平';
+    const cities=(q.cities||[]).map(city=>city.name||'未命名').join(' / ');
+    return `<tr>
+      <td>第${i+1}次</td><td>${escapeHTML(q.date||'—')}</td>
+      <td id="cmp-city-${i}">${fmt(r.cityGroupTotal,q.currency)}</td>
+      <td id="cmp-grand-${i}">${fmt(r.grandTotal,q.currency)}</td>
+      <td id="cmp-diff-${i}">${diffHtml}</td>
+      <td style="color:var(--text-secondary)">${escapeHTML(cities)}</td>
+    </tr>`;
+  }).join('');
+
+  const fuToday=new Date().toISOString().slice(0,10);
+  let fuHTML=followups.map((f,fi)=>{
+    const isOverdue=f.nextDate&&f.nextDate<fuToday&&f.status!=='完成';
+    const isDueToday=f.nextDate&&f.nextDate===fuToday&&f.status!=='完成';
+    const isDone=f.status==='完成';
+    let dueBadge='';
+    if(isOverdue) dueBadge=`<span style="background:#FEE2E2;color:#DC2626;font-size:10px;padding:1px 6px;border-radius:4px;font-weight:600">⚠️ 逾期</span>`;
+    else if(isDueToday) dueBadge=`<span style="background:#FEF3C7;color:#D97706;font-size:10px;padding:1px 6px;border-radius:4px;font-weight:600">📅 今日</span>`;
+    else if(isDone) dueBadge=`<span style="background:#D1FAE5;color:#059669;font-size:10px;padding:1px 6px;border-radius:4px;font-weight:600">✓ 完成</span>`;
+    return `
+    <div class="followup-item ${f.status==='待办'?'pending':'done'}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="fu-date">${escapeHTML(f.date||'')} · ${escapeHTML(f.method||'')}</div>
+          ${dueBadge}
+        </div>
+        <div style="display:flex;gap:6px">
+          ${!isDone?`<button class="btn btn-sm" style="font-size:11px;padding:2px 8px;background:#D1FAE5;color:#059669;border:1px solid #6EE7B7" onclick="markFollowupDone(${fi})">✓ 完成</button>`:''}
+          <button class="btn btn-outline btn-sm" style="font-size:11px;padding:2px 8px" onclick="editFollowup(${fi})">编辑</button>
+          <button class="btn btn-danger btn-sm" style="font-size:11px;padding:2px 8px" onclick="deleteFollowup(${fi})">删除</button>
+        </div>
+      </div>
+      <div class="fu-content">${escapeHTML(f.content||'')}</div>
+      ${f.feedback?`<div class="fu-feedback">客户反馈：${escapeHTML(f.feedback)}</div>`:''}
+      ${f.todo?`<div class="fu-todo">待办：${escapeHTML(f.todo)}</div>`:''}
+      ${f.nextDate?`<div style="font-size:11px;color:${isOverdue?'#DC2626':isDueToday?'#D97706':'var(--text-hint)'};margin-top:3px">下次跟进：${escapeHTML(f.nextDate)}</div>`:''}
+    </div>`;
+  }).join('');
+
+  document.getElementById('detail-body').innerHTML=`
+    <div class="info-card">
+      <div class="info-card-header"><span>👤</span><span class="section-title">客户基础信息</span>
+        <button class="btn btn-outline btn-sm" style="margin-left:auto" onclick="openEditClient()">编辑</button>
+      </div>
+      <div class="client-profile">
+        <div class="avatar-lg">${escapeHTML(initials)}</div>
+        <div><div class="profile-name">${escapeHTML(c.name||'')}</div>
+        <div class="profile-sub">${escapeHTML(c.country||'')} ${c.paxDetail?'· '+escapeHTML(c.paxDetail):''}</div></div>
+      </div>
+      <div class="info-grid">
+        <div class="info-item"><div class="info-item-label">主要跟进方式</div><div class="info-item-value">${escapeHTML(c.contactChannel||'—')}</div></div>
+        <div class="info-item"><div class="info-item-label">出行人数</div><div class="info-item-value">${escapeHTML(c.pax||'—')} 人</div></div>
+        <div class="info-item"><div class="info-item-label">目标出行时间</div><div class="info-item-value">${escapeHTML(c.travelTime||'—')}</div></div>
+        <div class="info-item"><div class="info-item-label">行程天数</div><div class="info-item-value">${c.days?escapeHTML(c.days)+'天':'—'}</div></div>
+        <div class="info-item"><div class="info-item-label">路线 / 进出港</div><div class="info-item-value">${escapeHTML(c.route||'—')}</div></div>
+        <div class="info-item"><div class="info-item-label">导游方案</div><div class="info-item-value">${escapeHTML(c.guide||'—')}</div></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        ${c.level?`<span class="tag tag-${escapeHTML(c.level)}">意向${escapeHTML(c.level)}级</span>`:''}
+        ${c.status?`<span class="tag tag-status ${STATUS_COLOR[c.status]||''}">${escapeHTML(c.status)}</span>`:''}
+      </div>
+      ${c.note?`<div class="helper-text" style="margin-top:8px">备注：${escapeHTML(c.note)}</div>`:''}
+    </div>
+
+    <div class="info-card">
+      <div class="info-card-header"><span>📍</span><span class="section-title">行程亮点 / 客户需求</span></div>
+      <div class="chips-row">
+        ${(c.needs||[]).map((n,i)=>`<span class="chip" onclick="removeNeed(${i})" title="点击删除">${escapeHTML(n)}</span>`).join('')}
+        <span class="chip chip-add" onclick="addNeed()">＋ 添加需求</span>
+      </div>
+    </div>
+
+    <div class="info-card" id="itin-card">
+      <div class="info-card-header">
+        <span>📋</span><span class="section-title">行程方案</span>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+          <button class="btn btn-outline btn-sm" onclick="document.getElementById('itin-upload-input').click()">⬆ 上传Excel版本</button>
+          ${(c.itineraries||[]).length?'<button class="btn btn-gold btn-sm" onclick="generateItineraryPDF()">📄 生成行程PDF</button>':''}
+          <input type="file" id="itin-upload-input" accept=".xlsx,.xls" style="display:none" onchange="handleItineraryUpload(event)">
+        </div>
+      </div>
+      ${(()=>{
+        const itins=c.itineraries||[];
+        if(!itins.length) return '<div style="color:var(--text-hint);font-size:13px;padding:8px 0">暂无行程，点击「上传Excel版本」导入</div>';
+        const vi=Math.min(window._activeItinIndex||0, itins.length-1);
+        const itin=itins[vi];
+        const tabs=itins.map((it,i)=>`<button class="qtab${i===vi?' active':''}" onclick="switchItinTab(${i})">V${it.version}</button>`).join('');
+        const dayRows=(itin.days||[]).map(d=>`<tr>
+          <td style="font-weight:700;text-align:center;white-space:nowrap;padding:6px 8px;border:1px solid #DEE0E3;vertical-align:top;background:#F8F9FA;width:40px">${escapeHTML(String(d.day))}</td>
+          <td style="padding:6px 10px;border:1px solid #DEE0E3;vertical-align:top;font-size:12px;line-height:1.6;white-space:pre-wrap">${escapeHTML(d.activities||'')}</td>
+          <td style="padding:6px 10px;border:1px solid #DEE0E3;vertical-align:top;font-size:12px;white-space:pre-wrap;width:120px">${escapeHTML(d.meals||'')}</td>
+          <td style="padding:6px 10px;border:1px solid #DEE0E3;vertical-align:top;font-size:12px;width:160px">${escapeHTML(d.accommodation||'')}</td>
+        </tr>`).join('');
+        return `
+        <div style="display:flex;gap:6px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
+          ${tabs}
+          <button onclick="deleteItinerary(${vi})" style="font-size:11px;padding:4px 8px;border-radius:20px;border:1px solid var(--border);background:transparent;cursor:pointer;color:var(--text-hint)" onmouseover="this.style.background='#FEE2E2';this.style.color='#DC2626'" onmouseout="this.style.background='transparent';this.style.color='var(--text-hint)'">× 删除此版本</button>
+        </div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px">📂 ${escapeHTML(itin.name||'')} &nbsp;·&nbsp; 上传于 ${escapeHTML(itin.uploadedAt||'')}</div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead><tr>
+              <th style="background:#003366;color:#fff;padding:6px 8px;border:1px solid #DEE0E3;width:40px">Day</th>
+              <th style="background:#003366;color:#fff;padding:6px 10px;border:1px solid #DEE0E3">Schedule &amp; Activities</th>
+              <th style="background:#003366;color:#fff;padding:6px 10px;border:1px solid #DEE0E3;width:120px">Meals</th>
+              <th style="background:#003366;color:#fff;padding:6px 10px;border:1px solid #DEE0E3;width:160px">Accommodation</th>
+            </tr></thead>
+            <tbody>${dayRows}</tbody>
+          </table>
+        </div>
+        <div style="margin-top:10px">
+          <div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:4px">📝 Notes（内部备注，不出现在PDF）</div>
+          <textarea class="form-input" rows="3" style="font-size:12px;resize:vertical" placeholder="在此填写此版本行程的内部备注..." oninput="saveItineraryNote(${vi},this.value)">${escapeHTML(itin.notes||'')}</textarea>
+        </div>`;
+      })()}
+    </div>
+
+    <div class="info-card">
+      <div class="info-card-header">
+        <span>💰</span><span class="section-title">城市分段报价</span>
+        <button class="btn btn-gold btn-sm" style="margin-left:auto" onclick="generateInvoicePDF()">📄 生成客户报价单PDF</button>
+      </div>
+      <div class="helper-text" style="margin-bottom:12px;">蓝色区域填写对外报价（自动生成PDF）；展开「内部成本」记录内部成本明细（不出现在PDF中）。</div>
+      <div class="quote-tabs">${quoteTabs}</div>
+      <div id="quote-blocks">${quoteBlocks}</div>
+      ${quotes.length>1?`
+      <div style="margin-top:14px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px;">历次报价对比</div>
+        <div class="compare-wrap">
+          <table class="compare-table">
+            <thead><tr><th>轮次</th><th>日期</th><th>城市费用</th><th>客户报价总计</th><th>与上次差额</th><th>城市分段</th></tr></thead>
+            <tbody>${compareRows}</tbody>
+          </table>
+        </div>
+      </div>`:''}
+    </div>
+
+    <div class="info-card">
+      <div class="info-card-header"><span>📋</span><span class="section-title">跟进沟通记录</span></div>
+      <div class="followup-list">${fuHTML||'<div style="color:var(--text-hint);font-size:13px;padding:8px 0;">暂无跟进记录</div>'}</div>
+      <div class="add-followup-form">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div id="fu-form-title" style="font-size:12px;font-weight:600;color:var(--text-secondary)">新增跟进记录</div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <button class="btn btn-outline btn-sm" style="font-size:11px;color:#0070C0;border-color:#0070C0;border-style:dashed" onclick="openFuPasteModal()">📋 粘贴识别</button>
+            <button id="fu-cancel-btn" class="btn btn-outline btn-sm" style="display:none;font-size:11px" onclick="cancelEditFollowup()">取消编辑</button>
+          </div>
+        </div>
+        <div class="form-row-2">
+          <div><label class="form-label">跟进日期</label><input class="form-input" id="fu-date" type="date"></div>
+          <div><label class="form-label">跟进方式</label>
+            <select class="form-input" id="fu-method">
+              <option>Messenger</option><option>WhatsApp</option><option>Instagram</option><option>邮箱</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row"><label class="form-label">跟进内容摘要</label><input class="form-input" id="fu-content" placeholder="本次沟通内容..."></div>
+        <div class="form-row"><label class="form-label">客户反馈</label><input class="form-input" id="fu-feedback" placeholder="客户的回应..."></div>
+        <div class="form-row-2">
+          <div><label class="form-label">待办事项</label><input class="form-input" id="fu-todo" placeholder="下一步要做的..."></div>
+          <div><label class="form-label">下次跟进日期</label><input class="form-input" id="fu-next" type="date"></div>
+        </div>
+        <button class="btn btn-primary" style="width:100%;margin-top:4px;" onclick="saveFollowup()">保存跟进记录</button>
+      </div>
+    </div>`;
+
+  const today=new Date().toISOString().slice(0,10);
+  const fuDate=document.getElementById('fu-date');
+  if(fuDate&&!fuDate.value) fuDate.value=today;
+}
+
+function buildQuoteBlock(q,qi,pax,c){
+  q=normalizeQuote(q);
+  if(!pax) pax={adults:1,children:0,seniors:0,total:1};
+  const r=calcQuoteTotals(q,pax);
+  const paxLabel=[pax.adults?pax.adults+'成人':'',pax.children?pax.children+'儿童':'',pax.seniors?pax.seniors+'老人':''].filter(Boolean).join('+');
+  const cityCards=q.cities.map((city,ci)=>buildCityCard(qi,ci,city,q.currency,q.cities.length)).join('');
+
+  return `<div class="quote-block${qi===activeQuoteIndex?' active':''}" id="qblock-${qi}">
+    <div class="quote-toolbar">
+      <div>
+        <label class="form-label" style="margin:0 0 3px">报价日期</label>
+        <input class="form-input" type="date" value="${escapeHTML(q.date||'')}" oninput="updateQuoteDate(${qi},this.value)" style="width:150px">
+      </div>
+      <div>
+        <label class="form-label" style="margin:0 0 3px">报价币种</label>
+        <select class="form-input" onchange="updateQuoteCurrency(${qi},this.value)" style="width:110px">
+          ${['USD','CAD','AUD','NZD','SGD','EUR','GBP','AED','CNY','HKD','THB','MYR','PHP','JPY'].map(cur=>`<option value="${cur}" ${q.currency===cur?'selected':''}>${cur}</option>`).join('')}
+        </select>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="addCity(${qi})">＋ 新增城市</button>
+      <button class="btn btn-gold btn-sm" onclick="generateInvoicePDF(${qi})">📄 生成PDF</button>
+      <button class="btn btn-outline btn-sm" onclick="duplicateQuote(${qi})">复制报价</button>
+    </div>
+
+    ${cityCards}
+
+    <button class="btn btn-outline btn-sm" onclick="addCity(${qi})" style="width:100%;margin-bottom:10px;border-style:dashed">＋ 添加城市分段</button>
+
+    <!-- 导游服务 -->
+    <div style="background:#F8F9FA;border:1px solid #DEE0E3;border-radius:8px;padding:14px;margin-bottom:10px">
+      <div style="font-weight:700;color:#003366;margin-bottom:10px;font-size:13px">🧭 导游服务（Guide Service）</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
+        <div>
+          <label class="form-label">🇨🇳 中文导游 (${escapeHTML(q.currency)}/团，选填)</label>
+          <input class="form-input" type="text" inputmode="decimal" placeholder="不填则不显示"
+            value="${escapeHTML(q.guidePriceCN||'')}" oninput="updateGuidePriceCN(${qi},this.value)">
+        </div>
+        <div>
+          <label class="form-label">🌐 关键日英语导游 (${escapeHTML(q.currency)}/团，选填)</label>
+          <input class="form-input" type="text" inputmode="decimal" placeholder="不填则不显示"
+            value="${escapeHTML(q.guidePriceKeyEN||'')}" oninput="updateGuidePriceKeyEN(${qi},this.value)">
+        </div>
+        <div>
+          <label class="form-label">🌍 全程英语导游 (${escapeHTML(q.currency)}/团，选填)</label>
+          <input class="form-input" type="text" inputmode="decimal" placeholder="不填则不显示"
+            value="${escapeHTML(q.guidePriceFullEN||'')}" oninput="updateGuidePriceFullEN(${qi},this.value)">
+        </div>
+      </div>
+      <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:8px 12px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <span style="font-size:11px;color:#1E40AF;font-weight:600;white-space:nowrap">✅ 客户已选定：</span>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px">
+          <input type="radio" name="sg-${qi}" value="" ${!q.selectedGuide?'checked':''} onchange="updateSelectedGuide(${qi},this.value)">
+          <span style="color:#6B7280">未选定（保留所有选项）</span>
+        </label>
+        ${parseNum(q.guidePriceCN)?`<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px">
+          <input type="radio" name="sg-${qi}" value="CN" ${q.selectedGuide==='CN'?'checked':''} onchange="updateSelectedGuide(${qi},this.value)">
+          <span>🇨🇳 中文导游</span>
+        </label>`:''}
+        ${parseNum(q.guidePriceKeyEN)?`<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px">
+          <input type="radio" name="sg-${qi}" value="KeyEN" ${q.selectedGuide==='KeyEN'?'checked':''} onchange="updateSelectedGuide(${qi},this.value)">
+          <span>🌐 关键日英语</span>
+        </label>`:''}
+        ${parseNum(q.guidePriceFullEN)?`<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px">
+          <input type="radio" name="sg-${qi}" value="FullEN" ${q.selectedGuide==='FullEN'?'checked':''} onchange="updateSelectedGuide(${qi},this.value)">
+          <span>🌍 全程英语</span>
+        </label>`:''}
+      </div>
+    </div>
+
+    <!-- 城际交通 -->
+    <div style="background:#F8F9FA;border:1px solid #DEE0E3;border-radius:8px;padding:14px;margin-bottom:10px">
+      <div style="font-weight:700;color:#003366;margin-bottom:10px;font-size:13px">🚄 城际交通（Inter-city Transportation）</div>
+      ${q.transports.map((t,ti)=>{
+        const ap=parseNum(t.price);
+        const isFlight=isFlightTransport(t.type);
+        const halfP=ap?String(Math.round(ap*0.5)):'自动';
+        const infantP=ap?String(Math.round(ap*0.1)):'自动';
+        // 高铁儿童票UI
+        const railChildUI=`
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+            <div style="display:flex;align-items:center;gap:6px">
+              <div style="flex:1">
+                <div style="font-size:11px;color:#374151;margin-bottom:2px">🆓 免票人数</div>
+                <div style="font-size:10px;color:#6B7280;margin-bottom:4px">未满6岁，无座</div>
+                <input class="form-input" type="text" inputmode="numeric" placeholder="0" style="width:60px"
+                  value="${escapeHTML(t.childFree||'')}" oninput="updateTransportField(${qi},${ti},'childFree',this.value)">
+              </div>
+              <div style="color:#D1D5DB;padding-top:16px">│</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <div style="flex:1">
+                <div style="font-size:11px;color:#374151;margin-bottom:2px">🎫 优惠票人数</div>
+                <div style="font-size:10px;color:#6B7280;margin-bottom:4px">6–14岁，有座，半价</div>
+                <div style="display:flex;align-items:center;gap:4px">
+                  <input class="form-input" type="text" inputmode="numeric" placeholder="0" style="width:46px"
+                    value="${escapeHTML(t.childHalf||'')}" oninput="updateTransportField(${qi},${ti},'childHalf',this.value)">
+                  <span style="font-size:10px;color:#6B7280">人×</span>
+                  <input class="form-input" type="text" inputmode="decimal" placeholder="${halfP}" style="width:56px"
+                    value="${escapeHTML(t.childHalfPrice||'')}" oninput="updateTransportField(${qi},${ti},'childHalfPrice',this.value)">
+                </div>
+              </div>
+              <div style="color:#D1D5DB;padding-top:16px">│</div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:#374151;margin-bottom:2px">🎟️ 全价票人数</div>
+              <div style="font-size:10px;color:#6B7280;margin-bottom:4px">14岁及以上，同成人</div>
+              <input class="form-input" type="text" inputmode="numeric" placeholder="0" style="width:60px"
+                value="${escapeHTML(t.childFull||'')}" oninput="updateTransportField(${qi},${ti},'childFull',this.value)">
+            </div>
+          </div>`;
+        // 飞机儿童票UI
+        const flightChildUI=`
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+            <div style="display:flex;align-items:center;gap:6px">
+              <div style="flex:1">
+                <div style="font-size:11px;color:#374151;margin-bottom:2px">👶 婴儿人数</div>
+                <div style="font-size:10px;color:#6B7280;margin-bottom:4px">出生–2岁，成人票×10%</div>
+                <div style="display:flex;align-items:center;gap:4px">
+                  <input class="form-input" type="text" inputmode="numeric" placeholder="0" style="width:46px"
+                    value="${escapeHTML(t.childInfant||'')}" oninput="updateTransportField(${qi},${ti},'childInfant',this.value)">
+                  <span style="font-size:10px;color:#6B7280">人×</span>
+                  <input class="form-input" type="text" inputmode="decimal" placeholder="${infantP}" style="width:56px"
+                    value="${escapeHTML(t.childInfantPrice||'')}" oninput="updateTransportField(${qi},${ti},'childInfantPrice',this.value)">
+                </div>
+              </div>
+              <div style="color:#D1D5DB;padding-top:16px">│</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <div style="flex:1">
+                <div style="font-size:11px;color:#374151;margin-bottom:2px">🎫 儿童票人数</div>
+                <div style="font-size:10px;color:#6B7280;margin-bottom:4px">2–12岁，半价</div>
+                <div style="display:flex;align-items:center;gap:4px">
+                  <input class="form-input" type="text" inputmode="numeric" placeholder="0" style="width:46px"
+                    value="${escapeHTML(t.childFlight||'')}" oninput="updateTransportField(${qi},${ti},'childFlight',this.value)">
+                  <span style="font-size:10px;color:#6B7280">人×</span>
+                  <input class="form-input" type="text" inputmode="decimal" placeholder="${halfP}" style="width:56px"
+                    value="${escapeHTML(t.childFlightPrice||'')}" oninput="updateTransportField(${qi},${ti},'childFlightPrice',this.value)">
+                </div>
+              </div>
+              <div style="color:#D1D5DB;padding-top:16px">│</div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:#374151;margin-bottom:2px">🎟️ 成人票人数</div>
+              <div style="font-size:10px;color:#6B7280;margin-bottom:4px">12岁及以上，全价</div>
+              <input class="form-input" type="text" inputmode="numeric" placeholder="0" style="width:60px"
+                value="${escapeHTML(t.childFlightFull||'')}" oninput="updateTransportField(${qi},${ti},'childFlightFull',this.value)">
+            </div>
+          </div>`;
+        const icon=isFlight?'✈️':'🚄';
+        const label=isFlight?'儿童乘机票价（按年龄段分别录入人数）':'儿童乘车票价（按年龄段分别录入人数）';
+        return `
+      <div style="background:#fff;border:1px solid #E5E7EB;border-radius:6px;padding:10px;margin-bottom:8px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto auto;gap:8px;align-items:end;margin-bottom:8px">
+          <div>
+            <label class="form-label">城市路线</label>
+            <input class="form-input" type="text" placeholder="如：Beijing→Xi'an"
+              value="${escapeHTML(t.route||'')}" oninput="updateTransportField(${qi},${ti},'route',this.value)">
+          </div>
+          <div>
+            <label class="form-label">交通方式 <span style="font-size:10px;color:#9CA3AF">（输入Flight自动切换票价规则）</span></label>
+            <input class="form-input" type="text" placeholder="High-Speed Rail / Flight"
+              value="${escapeHTML(t.type||'')}" oninput="updateTransportField(${qi},${ti},'type',this.value)">
+          </div>
+          <div>
+            <label class="form-label">座位/舱位等级</label>
+            <input class="form-input" type="text" placeholder="Second Class / Economy"
+              value="${escapeHTML(t.seatClass||'')}" oninput="updateTransportField(${qi},${ti},'seatClass',this.value)">
+          </div>
+          <div>
+            <label class="form-label">成人票价/人 (${escapeHTML(q.currency)})</label>
+            <input class="form-input" type="text" inputmode="decimal" placeholder="0" style="width:90px"
+              value="${escapeHTML(t.price||'')}" oninput="updateTransportField(${qi},${ti},'price',this.value)">
+          </div>
+          <div style="padding-bottom:2px">
+            <button class="btn btn-danger btn-sm" onclick="removeTransport(${qi},${ti})">删除</button>
+          </div>
+        </div>
+        <div style="background:${isFlight?'#EFF6FF':'#FFF8E7'};border:1px solid ${isFlight?'#93C5FD':'#FBBF24'};border-radius:4px;padding:8px 10px">
+          <div style="font-size:11px;color:${isFlight?'#1E40AF':'#92400E'};font-weight:600;margin-bottom:6px">${icon} ${label}</div>
+          ${isFlight?flightChildUI:railChildUI}
+        </div>
+      </div>`;
+      }).join('')}
+      <button class="btn btn-outline btn-sm" onclick="addTransport(${qi})" style="border-style:dashed;width:100%">＋ 添加交通行程</button>
+    </div>
+
+    <!-- 第一行：内部视角 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
+      <div class="total-card internal">
+        <div class="total-label">内部成本合计</div>
+        <div class="total-value red" id="qt-cost-${qi}">${fmt(r.totalCost,q.currency)}</div>
+      </div>
+      <div class="total-card" style="background:#FDF4FF;border:1px solid #E9D5FF">
+        <div class="total-label" style="color:#7C3AED">加价 / 利润</div>
+        <div style="display:flex;align-items:baseline;gap:8px">
+          <div class="total-value" style="color:#7C3AED" id="qt-markup-${qi}">${fmt(r.markup,q.currency)}</div>
+          <div style="font-size:12px;color:#9CA3AF;font-weight:500" id="qt-markup-pct-${qi}">${r.markupPct}%</div>
+        </div>
+      </div>
+    </div>
+    <!-- 第二行：客户报价构成 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:8px">
+      <div class="total-card noguide">
+        <div class="total-label">城市费用${paxLabel?'（'+paxLabel+'）':''}</div>
+        <div class="total-value blue" id="qt-city-${qi}">${fmt(r.cityGroupTotal,q.currency)}</div>
+      </div>
+      <div class="total-card per">
+        <div class="total-label">城际交通</div>
+        <div class="total-value amber" id="qt-trans-${qi}">${fmt(r.transTotal,q.currency)}</div>
+      </div>
+      <div class="total-card withguide">
+        <div class="total-label">导游服务</div>
+        <div class="total-value green" id="qt-guide-${qi}">${fmt(r.guideTotal,q.currency)}</div>
+      </div>
+    </div>
+    <!-- 第三行：客户报价总计 -->
+    <div style="margin-top:8px;border-radius:12px;padding:12px 16px;background:linear-gradient(135deg,#003366,#0070C0);display:flex;align-items:center;justify-content:space-between">
+      <div style="color:rgba(255,255,255,0.85);font-size:11px;letter-spacing:.3px">客户报价总计${paxLabel?' ('+paxLabel+')':''}</div>
+      <div class="total-value" style="color:#FFD700;font-size:22px" id="qt-grand-${qi}">${fmt(r.grandTotal,q.currency)}</div>
+    </div>
+
+    <textarea class="quote-note-input" rows="2" placeholder="本次报价备注：如行程调整说明、特殊要求等..."
+      oninput="updateQuoteNote(${qi},this.value)">${escapeHTML(q.note||'')}</textarea>
+  </div>`;
+}
+
+function buildCityCard(qi,ci,city,currency,cityCount){
+  city=normalizeCity(city);
+  const r=calcCity(city);
+  const costRows=COST_ITEMS.map(item=>`
+    <div class="cost-item">
+      <div class="cost-label">${escapeHTML(item.label)}</div>
+      <input class="cost-input" type="text" inputmode="decimal" placeholder="0" value="${escapeHTML(city.costs[item.key]||'')}"
+        oninput="updateCityCost(${qi},${ci},'${item.key}',this.value)">
+    </div>`).join('');
+
+  return `<div class="city-card" id="city-card-${qi}-${ci}">
+    <div class="city-head">
+      <input class="city-title-input" type="text" autocomplete="off" value="${escapeHTML(city.name||'')}" placeholder="城市名称，如：Guangzhou / Zhangjiajie"
+        oninput="updateCityName(${qi},${ci},this.value)" onchange="updateCityName(${qi},${ci},this.value)">
+      ${cityCount>1?`<button class="btn btn-danger btn-sm" onclick="removeCity(${qi},${ci})">删除</button>`:''}
+    </div>
+    <div class="city-body">
+
+      <!-- 对外报价区（填这里生成PDF） -->
+      <div class="public-price-section">
+        <div class="public-price-title">📋 对外报价（填写后自动生成报价单）</div>
+        <div class="public-price-grid">
+          <div class="public-price-item">
+            <label>行程描述（如 4D3N trip）</label>
+            <input class="pub-input text-input" type="text" placeholder="4D3N trip" value="${escapeHTML(city.itinerary||'')}"
+              oninput="updateCityItinerary(${qi},${ci},this.value)">
+          </div>
+          <div class="public-price-item">
+            <label>👤 成人价格 (${escapeHTML(currency)}/人)</label>
+            <input class="pub-input" type="text" inputmode="decimal" placeholder="0" value="${escapeHTML(city.priceAdult||city.priceNoGuide||'')}"
+              oninput="updateCityPriceAdult(${qi},${ci},this.value)">
+          </div>
+          <div class="public-price-item">
+            <label>🧒 儿童价格 (${escapeHTML(currency)}/人，选填)</label>
+            <input class="pub-input" type="text" inputmode="decimal" placeholder="不填则不显示" value="${escapeHTML(city.priceChild||'')}"
+              oninput="updateCityPriceChild(${qi},${ci},this.value)">
+          </div>
+          <div class="public-price-item">
+            <label>🧓 老人价格 (${escapeHTML(currency)}/人，选填)</label>
+            <input class="pub-input" type="text" inputmode="decimal" placeholder="不填则不显示" value="${escapeHTML(city.priceSenior||'')}"
+              oninput="updateCityPriceSenior(${qi},${ci},this.value)">
+          </div>
+        </div>
+      </div>
+
+      <!-- 内部成本（折叠） -->
+      <div class="cost-toggle" onclick="toggleCostSection(${qi},${ci})">
+        <span id="cost-arrow-${qi}-${ci}">▶</span> 内部成本明细（不出现在客户报价单中）
+        ${r.cost?`<span style="color:var(--red);margin-left:4px">${fmt(r.cost,currency)}</span>`:''}
+      </div>
+      <div class="cost-section" id="cost-section-${qi}-${ci}">
+        <div class="cost-grid">${costRows}</div>
+        <div class="city-summary">
+          <div class="summary-box cost">
+            <div class="summary-label">城市成本合计</div>
+            <div class="summary-value red" id="city-cost-${qi}-${ci}">${fmt(r.cost,currency)}</div>
+          </div>
+          <div class="summary-box profit">
+            <div class="summary-label">内部利润目标</div>
+            <input class="cost-input" type="text" inputmode="decimal" placeholder="0" value="${escapeHTML(city.profit||'')}"
+              oninput="updateCityProfit(${qi},${ci},this.value)">
+          </div>
+          <div class="summary-box suggest">
+            <div class="summary-label">建议最低报价（总）</div>
+            <div class="summary-value amber" id="city-suggest-${qi}-${ci}">${fmt(r.suggested,currency)}</div>
+          </div>
+        </div>
+      </div>
+
+      <textarea class="city-note" rows="2" placeholder="城市备注（可显示在PDF中）：如 Includes hotel, private car, entrance tickets..."
+        oninput="updateCityNote(${qi},${ci},this.value)">${escapeHTML(city.note||'')}</textarea>
+    </div>
+  </div>`;
+}
+
+function toggleCostSection(qi,ci){
+  const sec=document.getElementById(`cost-section-${qi}-${ci}`);
+  const arrow=document.getElementById(`cost-arrow-${qi}-${ci}`);
+  if(sec.classList.contains('open')){ sec.classList.remove('open'); arrow.textContent='▶'; }
+  else{ sec.classList.add('open'); arrow.textContent='▼'; }
+}
+
+function switchQTab(idx){
+  activeQuoteIndex=idx;
+  document.querySelectorAll('.qtab').forEach((t,i)=>t.classList.toggle('active',i===idx));
+  document.querySelectorAll('.quote-block').forEach((b,i)=>b.classList.toggle('active',i===idx));
+}
+function deleteQuote(qi){
+  const c=getClient(); if(!c)return;
+  if(c.quotes.length<=1){ alert('至少保留一个报价'); return; }
+  if(!confirm(`确认删除第${qi+1}次报价？`)) return;
+  c.quotes.splice(qi,1);
+  activeQuoteIndex=Math.min(activeQuoteIndex,c.quotes.length-1);
+  save(); renderDetail(c);
+}
+function addQuote(){
+  const c=getClient(); if(!c)return;
+  c.quotes.push(normalizeQuote({date:new Date().toISOString().slice(0,10),currency:'USD',cities:[{id:uid(),name:'',itinerary:'',priceNoGuide:'',priceWithGuide:'',costs:emptyCosts(),profit:'',note:''}],note:''}));
+  activeQuoteIndex=c.quotes.length-1; save(); renderDetail(c);
+}
+function duplicateQuote(qi){
+  const c=getClient(); if(!c||!c.quotes[qi])return;
+  const copy=JSON.parse(JSON.stringify(c.quotes[qi]));
+  copy.date=new Date().toISOString().slice(0,10);
+  copy.cities=(copy.cities||[]).map(city=>({...city,id:uid()}));
+  c.quotes.push(normalizeQuote(copy));
+  activeQuoteIndex=c.quotes.length-1; save(); renderDetail(c);
+}
+function addCity(qi){
+  const c=getClient(); if(!c||!c.quotes[qi])return;
+  c.quotes[qi].cities.push(normalizeCity({id:uid(),name:'',itinerary:'',priceNoGuide:'',priceWithGuide:'',costs:emptyCosts(),profit:'',note:''}));
+  save(); renderDetail(c); switchQTab(qi);
+}
+function removeCity(qi,ci){
+  const c=getClient(); if(!c||!c.quotes[qi])return;
+  if(c.quotes[qi].cities.length<=1){ alert('至少保留一个城市分段'); return; }
+  if(!confirm('确定删除这个城市分段？'))return;
+  c.quotes[qi].cities.splice(ci,1); save(); renderDetail(c); switchQTab(qi);
+}
+function updateQuoteDate(qi,val){ const c=getClient(); if(!c)return; c.quotes[qi].date=val; save(); }
+function updateQuoteCurrency(qi,val){ const c=getClient(); if(!c)return; c.quotes[qi].currency=val; save(); renderDetail(c); switchQTab(qi); }
+function updateQuoteNote(qi,val){ const c=getClient(); if(!c)return; c.quotes[qi].note=val; save(); }
+function updateCityName(qi,ci,val){ const c=getClient(); if(!c)return; c.quotes[qi].cities[ci].name=val; save(); }
+function updateCityItinerary(qi,ci,val){ const c=getClient(); if(!c)return; c.quotes[qi].cities[ci].itinerary=val; save(); }
+function updateCityPriceNoGuide(qi,ci,val){ const c=getClient(); if(!c)return; c.quotes[qi].cities[ci].priceNoGuide=val; save(); recalcQuoteUI(qi); }
+function updateCityPriceAdult(qi,ci,val){ const c=getClient(); if(!c)return; c.quotes[qi].cities[ci].priceAdult=val; c.quotes[qi].cities[ci].priceNoGuide=val; save(); recalcQuoteUI(qi); }
+function updateCityPriceChild(qi,ci,val){ const c=getClient(); if(!c)return; c.quotes[qi].cities[ci].priceChild=val; save(); }
+function updateCityPriceSenior(qi,ci,val){ const c=getClient(); if(!c)return; c.quotes[qi].cities[ci].priceSenior=val; save(); }
+function updateCityPriceWithGuide(qi,ci,val){ const c=getClient(); if(!c)return; c.quotes[qi].cities[ci].priceWithGuide=val; save(); recalcQuoteUI(qi); }
+function updateCityCost(qi,ci,key,val){ const c=getClient(); if(!c)return; c.quotes[qi].cities[ci].costs[key]=val; save(); recalcInternalUI(qi,ci); }
+function updateCityProfit(qi,ci,val){ const c=getClient(); if(!c)return; c.quotes[qi].cities[ci].profit=val; save(); recalcInternalUI(qi,ci); }
+function updateCityNote(qi,ci,val){ const c=getClient(); if(!c)return; c.quotes[qi].cities[ci].note=val; save(); }
+function updateGuideType(qi,val){ const c=getClient(); if(!c)return; c.quotes[qi].guideType=val; save(); }
+function updateGuidePrice(qi,val){ const c=getClient(); if(!c)return; c.quotes[qi].guidePrice=val; save(); recalcQuoteUI(qi); }
+function updateGuidePriceCN(qi,val){ const c=getClient(); if(!c)return; c.quotes[qi].guidePriceCN=val; save(); }
+function updateGuidePriceKeyEN(qi,val){ const c=getClient(); if(!c)return; c.quotes[qi].guidePriceKeyEN=val; save(); }
+function updateGuidePriceFullEN(qi,val){ const c=getClient(); if(!c)return; c.quotes[qi].guidePriceFullEN=val; save(); }
+function updateSelectedGuide(qi,val){ const c=getClient(); if(!c)return; c.quotes[qi].selectedGuide=val; save(); }
+function addTransport(qi){ const c=getClient(); if(!c)return; if(!Array.isArray(c.quotes[qi].transports))c.quotes[qi].transports=[]; c.quotes[qi].transports.push(normalizeTransport({})); save(); renderDetail(c); }
+function removeTransport(qi,ti){ const c=getClient(); if(!c)return; c.quotes[qi].transports.splice(ti,1); save(); renderDetail(c); }
+function isFlightTransport(type){
+  return /flight|飞机|plane|airline|air\s*ticket/i.test(type||'');
+}
+function updateTransportField(qi,ti,field,val){
+  const c=getClient(); if(!c)return;
+  const t=c.quotes[qi].transports[ti];
+  const wasFlight=isFlightTransport(t.type);
+  t[field]=val;
+  const nowFlight=isFlightTransport(t.type);
+  save();
+  // 交通方式改变导致票价规则切换，需重绘整个区块
+  if(field==='type'&&wasFlight!==nowFlight){ renderDetail(c); return; }
+  recalcQuoteUI(qi);
+}
+
+function recalcInternalUI(qi,ci){
+  const c=getClient(); if(!c||!c.quotes[qi])return;
+  const city=c.quotes[qi].cities[ci];
+  const r=calcCity(city);
+  const q=c.quotes[qi];
+  const set=(id,v)=>{ const el=document.getElementById(id); if(el)el.textContent=v; };
+  set(`city-cost-${qi}-${ci}`,fmt(r.cost,q.currency));
+  set(`city-suggest-${qi}-${ci}`,fmt(r.suggested,q.currency));
+  recalcQuoteUI(qi);
+}
+function recalcQuoteUI(qi){
+  const c=getClient(); if(!c||!c.quotes[qi])return;
+  const q=c.quotes[qi];
+  const pax=getClientPax(c);
+  const r=calcQuoteTotals(q,pax);
+  const set=(id,v)=>{ const el=document.getElementById(id); if(el)el.textContent=v; };
+  set(`qt-cost-${qi}`,fmt(r.totalCost,q.currency));
+  set(`qt-markup-${qi}`,fmt(r.markup,q.currency));
+  const pctEl=document.getElementById(`qt-markup-pct-${qi}`);
+  if(pctEl) pctEl.textContent=r.markupPct+'%';
+  set(`qt-city-${qi}`,fmt(r.cityGroupTotal,q.currency));
+  set(`qt-guide-${qi}`,fmt(r.guideTotal,q.currency));
+  set(`qt-trans-${qi}`,fmt(r.transTotal,q.currency));
+  set(`qt-grand-${qi}`,fmt(r.grandTotal,q.currency));
+  // 同步更新对比表
+  set(`cmp-city-${qi}`,fmt(r.cityGroupTotal,q.currency));
+  set(`cmp-grand-${qi}`,fmt(r.grandTotal,q.currency));
+  // 更新本行及下一行的差额
+  const quotes=c.quotes;
+  [qi, qi+1].forEach(i=>{
+    if(!quotes[i]) return;
+    const ri=calcQuoteTotals(quotes[i],pax);
+    const prev=i>0?calcQuoteTotals(quotes[i-1],pax).grandTotal:null;
+    const diff=prev!==null?ri.grandTotal-prev:null;
+    const diffEl=document.getElementById(`cmp-diff-${i}`);
+    if(!diffEl) return;
+    if(diff===null) diffEl.innerHTML='—';
+    else if(diff>0) diffEl.innerHTML=`<span class="diff-up">+${fmtA(diff,quotes[i].currency)}</span>`;
+    else if(diff<0) diffEl.innerHTML=`<span class="diff-dn">-${fmtA(Math.abs(diff),quotes[i].currency)}</span>`;
+    else diffEl.innerHTML='持平';
+  });
+}
+
+function addNeed(){
+  const val=prompt('请输入行程需求、城市或客户偏好：');
+  if(!val||!val.trim())return;
+  const c=getClient(); if(!c)return;
+  c.needs.push(val.trim()); save(); renderDetail(c);
+}
+function removeNeed(idx){ const c=getClient(); if(!c)return; c.needs.splice(idx,1); save(); renderDetail(c); }
+
+let editingFollowupIdx=null;
+function saveFollowup(){
+  const c=getClient(); if(!c)return;
+  const content=document.getElementById('fu-content').value.trim();
+  if(!content){ alert('请填写跟进内容'); return; }
+  const entry={
+    date:document.getElementById('fu-date').value,
+    method:document.getElementById('fu-method').value,
+    content,
+    feedback:document.getElementById('fu-feedback').value,
+    todo:document.getElementById('fu-todo').value,
+    nextDate:document.getElementById('fu-next').value,
+    status:document.getElementById('fu-todo').value?'待办':'完成'
+  };
+  if(editingFollowupIdx!==null){
+    c.followups[editingFollowupIdx]=entry;
+    editingFollowupIdx=null;
+  } else {
+    c.followups.push(entry);
+    if(!c.contactChannel&&CONTACT_OPTIONS.includes(entry.method))
+      c.contactChannel=entry.method;
+  }
+  save(); renderDetail(c);
+}
+function editFollowup(fi){
+  const c=getClient(); if(!c)return;
+  const f=c.followups[fi]; if(!f)return;
+  editingFollowupIdx=fi;
+  document.getElementById('fu-date').value=f.date||'';
+  document.getElementById('fu-method').value=f.method||'';
+  document.getElementById('fu-content').value=f.content||'';
+  document.getElementById('fu-feedback').value=f.feedback||'';
+  document.getElementById('fu-todo').value=f.todo||'';
+  document.getElementById('fu-next').value=f.nextDate||'';
+  document.getElementById('fu-form-title').textContent='编辑跟进记录';
+  document.getElementById('fu-form-title').style.color='var(--primary)';
+  document.getElementById('fu-cancel-btn').style.display='';
+  document.querySelector('.add-followup-form').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function cancelEditFollowup(){
+  editingFollowupIdx=null;
+  ['fu-content','fu-feedback','fu-todo'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fu-date').value='';
+  document.getElementById('fu-next').value='';
+  document.getElementById('fu-form-title').textContent='新增跟进记录';
+  document.getElementById('fu-form-title').style.color='';
+  document.getElementById('fu-cancel-btn').style.display='none';
+}
+function deleteFollowup(fi){
+  if(!confirm('确认删除这条跟进记录？')) return;
+  const c=getClient(); if(!c)return;
+  c.followups.splice(fi,1);
+  save(); renderDetail(c);
+}
+function markFollowupDone(fi){
+  const c=getClient(); if(!c)return;
+  c.followups[fi].status='完成';
+  save(); renderDetail(c);
+  // 如果提醒横幅还在，重新检查一次（可能还有其他逾期）
+  const banner=document.getElementById('reminder-banner');
+  if(banner){ banner.remove(); checkFollowupReminders(); }
+}
+
+function openNewClient(){
+  editingId=null;
+  document.getElementById('modal-title').textContent='新增客户';
+  ['f-name','f-country','f-pax','f-pax-detail','f-travel-time','f-days','f-route','f-note'].forEach(id=>{ document.getElementById(id).value=''; });
+  document.getElementById('f-contact-channel').value='';
+  document.getElementById('f-guide').value='';
+  document.getElementById('f-level').value='';
+  document.getElementById('f-status').value='';
+  document.getElementById('modal-client').classList.add('open');
+}
+function syncPaxTotal(){
+  const a=parseInt(document.getElementById('f-pax-adults').value)||0;
+  const ch=parseInt(document.getElementById('f-pax-children').value)||0;
+  const s=parseInt(document.getElementById('f-pax-seniors').value)||0;
+  const tot=a+ch+s;
+  if(tot>0) document.getElementById('f-pax').value=tot;
+}
+function openEditClient(){
+  const c=getClient(); if(!c)return;
+  editingId=c.id;
+  document.getElementById('modal-title').textContent='编辑客户信息';
+  document.getElementById('f-name').value=c.name||'';
+  document.getElementById('f-country').value=c.country||'';
+  document.getElementById('f-contact-channel').value=c.contactChannel||'';
+  document.getElementById('f-pax').value=c.pax||'';
+  // 如果结构化字段都为空，尝试从人员备注自动解析
+  let pa=c.paxAdults||'', pch=c.paxChildren||'', ps=c.paxSeniors||'';
+  if(!pa&&!pch&&!ps&&(c.paxDetail||c.pax)){
+    const parsed=parsePaxCounts(c.paxDetail,parseInt(c.pax)||0);
+    if(parsed.adults) pa=parsed.adults;
+    if(parsed.children) pch=parsed.children;
+    if(parsed.seniors) ps=parsed.seniors;
+  }
+  document.getElementById('f-pax-adults').value=pa||'';
+  document.getElementById('f-pax-children').value=pch||'';
+  document.getElementById('f-pax-seniors').value=ps||'';
+  document.getElementById('f-pax-detail').value=c.paxDetail||'';
+  document.getElementById('f-travel-time').value=c.travelTime||'';
+  document.getElementById('f-days').value=c.days||'';
+  document.getElementById('f-route').value=c.route||'';
+  document.getElementById('f-guide').value=c.guide||'';
+  document.getElementById('f-level').value=c.level||'';
+  document.getElementById('f-status').value=c.status||'';
+  document.getElementById('f-note').value=c.note||'';
+  document.getElementById('modal-client').classList.add('open');
+}
+function closeModal(){ document.getElementById('modal-client').classList.remove('open'); }
+function saveClient(){
+  const name=document.getElementById('f-name').value.trim();
+  if(!name){ alert('请填写客户姓名'); return; }
+  const data={name,country:document.getElementById('f-country').value,contactChannel:document.getElementById('f-contact-channel').value,
+    pax:document.getElementById('f-pax').value,
+    paxAdults:document.getElementById('f-pax-adults').value,
+    paxChildren:document.getElementById('f-pax-children').value,
+    paxSeniors:document.getElementById('f-pax-seniors').value,
+    paxDetail:document.getElementById('f-pax-detail').value,
+    travelTime:document.getElementById('f-travel-time').value,days:document.getElementById('f-days').value,
+    route:document.getElementById('f-route').value,guide:document.getElementById('f-guide').value,
+    level:document.getElementById('f-level').value,status:document.getElementById('f-status').value,
+    note:document.getElementById('f-note').value};
+  if(editingId){
+    const idx=clients.findIndex(x=>x.id===editingId);
+    if(idx>-1) clients[idx]=normalizeClient({...clients[idx],...data});
+  } else {
+    const pending=window._pendingFollowups||[];
+    const followups=pending.map(f=>({id:uid(),date:f.date||new Date().toISOString().slice(0,10),channel:f.channel||'',content:f.content||'',nextDate:f.nextDate||'',status:f.status||''}));
+    clients.unshift(normalizeClient({id:uid(),createdAt:new Date().toLocaleDateString('zh-CN'),quotes:[],needs:[],followups,...data}));
+    window._pendingFollowups=null;
+  }
+  save(); closeModal();
+  if(editingId&&currentId) renderDetail(getClient());
+  else { renderList(); updateStats(); }
+}
+function deleteClient(){
+  const c=getClient(); if(!c)return;
+  if(!confirm(`确定删除客户「${c.name}」？此操作不可恢复。`))return;
+  clients=clients.filter(x=>x.id!==currentId); save(); showList();
+}
+function showList(){
+  document.getElementById('view-detail').classList.remove('active');
+  document.getElementById('view-list').classList.add('active');
+  currentId=null; renderList(); updateStats();
+}
+
+function formatPaxEN(adults, children, seniors){
+  const p=[];
+  if(adults) p.push(adults+' adult'+(adults>1?'s':''));
+  if(children) p.push(children+' child'+(children===1?'':'ren'));
+  if(seniors) p.push(seniors+' senior'+(seniors>1?'s':''));
+  return p.join(' + ')||'—';
+}
+function formatTravelTimeEN(t){
+  if(!t) return '';
+  // keep only segment before Chinese notes (，初步/参考/备注 etc.)
+  t=t.split(/，/)[0].trim();
+  // translate N月M日 → English month name + day
+  const MN=['','January','February','March','April','May','June','July','August','September','October','November','December'];
+  t=t.replace(/(\d{1,2})月(\d{1,2})日?/g,(_,m,d)=>MN[parseInt(m)]+' '+parseInt(d));
+  t=t.replace(/(\d{4})年/g,'$1 ');
+  // clean up separators
+  t=t.replace(/[-–—]\s*/g,' – ');
+  return t.trim();
+}
+/* ===== PDF Invoice — matches Excel template format ===== */
+function invoiceHTML(c, q, qi){
+  q=normalizeQuote(q);
+  const pax=parseInt(c.pax)||1;
+  const adults=parseInt(c.paxAdults)||0;
+  const children=parseInt(c.paxChildren)||0;
+  const seniors=parseInt(c.paxSeniors)||0;
+  const totalParsed=adults+children+seniors;
+  const effectiveAdults=totalParsed>0?adults:(pax);
+  const effectiveChildren=totalParsed>0?children:0;
+  const effectiveSeniors=totalParsed>0?seniors:0;
+  const sym=getSymbol(q.currency);
+  // compute group totals per city
+  let cityGroupTotal=0;
+  q.cities.forEach(city=>{
+    const ap=parseNum(city.priceAdult||city.priceNoGuide);
+    const cp=parseNum(city.priceChild);
+    const sp=parseNum(city.priceSenior);
+    cityGroupTotal+=ap*effectiveAdults+cp*effectiveChildren+sp*effectiveSeniors;
+  });
+  let transGroupTotal=0;
+  q.transports.forEach(t=>{
+    const ap=parseNum(t.price);
+    if(isFlightTransport(t.type)){
+      const infantP=parseNum(t.childInfantPrice)||(ap*0.1);
+      const flightP=parseNum(t.childFlightPrice)||(ap*0.5);
+      transGroupTotal+=ap*effectiveAdults+ap*effectiveSeniors
+        +(parseInt(t.childInfant)||0)*infantP
+        +(parseInt(t.childFlight)||0)*flightP
+        +(parseInt(t.childFlightFull)||0)*ap;
+    } else {
+      const halfPrice=parseNum(t.childHalfPrice)||(ap*0.5);
+      transGroupTotal+=ap*effectiveAdults+ap*effectiveSeniors
+        +(parseInt(t.childHalf)||0)*halfPrice
+        +(parseInt(t.childFull)||0)*ap;
+    }
+  });
+  const guideOptions=[
+    {key:'CN',    label:'Chinese-speaking guide (全程中文导游)',          price:parseNum(q.guidePriceCN)},
+    {key:'KeyEN', label:'Key days with English guide (关键日英语导游)',    price:parseNum(q.guidePriceKeyEN)},
+    {key:'FullEN',label:'Full English-speaking guide (全程英语导游)',      price:parseNum(q.guidePriceFullEN)},
+  ].filter(o=>o.price>0);
+  const selectedGuideKey=q.selectedGuide||'';
+  const selectedGuideOpt=guideOptions.find(o=>o.key===selectedGuideKey);
+  const guideGroupTotal=selectedGuideOpt?selectedGuideOpt.price:0;
+  const grandGroupTotal=cityGroupTotal+transGroupTotal+guideGroupTotal;
+  const hasGuide=guideOptions.length>0;
+  const hasTransport=q.transports.length>0;
+  const today=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+
+  const B='border:1px solid #DEE0E3;';
+  const cellS='padding:9px 10px;vertical-align:middle;font-size:11.5px;color:#333;'+B;
+  const hdrS='background:#0070C0;color:#fff;padding:6px 10px;font-weight:700;font-size:11.5px;vertical-align:middle;'+B;
+  const secS='background:#003366;color:#fff;font-weight:700;font-size:11.5px;padding:6px 8px;vertical-align:middle;text-align:center;'+B;
+  const subS='background:#D9D9D9;font-weight:700;padding:5px 10px;vertical-align:middle;font-size:11.5px;'+B;
+
+  const cityN=q.cities.length;
+  // city rows — first row carries the section-label cell (rowspan = cityN + 1 for subtotal)
+  const cityRows=q.cities.map((city,idx)=>{
+    const bg=idx%2===0?'#EBF1F8':'#FFFFFF';
+    const ap=parseNum(city.priceAdult||city.priceNoGuide);
+    const cp=parseNum(city.priceChild);
+    const sp=parseNum(city.priceSenior);
+    const note=city.note?'<br><span style="font-size:10px;color:#6B7280">'+escapeHTML(city.note)+'</span>':'';
+    const secCell=idx===0?'<td style="'+secS+'" rowspan="'+(cityN+1)+'">City<br>Costs</td>':'';
+    let priceHtml='';
+    if(ap){ priceHtml+='<span style="white-space:nowrap">Adult: '+sym+Math.round(ap).toLocaleString()+'/person</span>'; }
+    if(cp){ priceHtml+=(priceHtml?'<br>':'')+'<span style="white-space:nowrap">Child: '+sym+Math.round(cp).toLocaleString()+'/person</span>'; }
+    if(sp){ priceHtml+=(priceHtml?'<br>':'')+'<span style="white-space:nowrap">Senior: '+sym+Math.round(sp).toLocaleString()+'/person</span>'; }
+    if(!priceHtml) priceHtml='—';
+    return '<tr>'+secCell
+      +'<td style="'+cellS+'background:'+bg+';font-weight:700">'+escapeHTML(city.name||('City '+(idx+1)))+'</td>'
+      +'<td style="'+cellS+'background:'+bg+'">'+escapeHTML(city.itinerary||'—')+note+'</td>'
+      +'<td style="'+cellS+'background:'+bg+';text-align:right;font-weight:700;line-height:1.8">'+priceHtml+'</td>'
+      +'</tr>';
+  }).join('');
+
+  const transN=q.transports.length;
+  // transport rows — 4 cols: section label | route | transport+seatclass | price
+  const transRows=transN?q.transports.map((t,idx)=>{
+    const bg=idx%2===0?'#FFFFFF':'#F5F8FF';
+    const ap=parseNum(t.price);
+    const secCell=idx===0?'<td style="'+secS+'border-top:none" rowspan="'+(transN+1)+'">Inter-city<br>Transport</td>':'';
+    const transportDetail=escapeHTML(t.type||'—')+(t.seatClass?' <span style="color:#6B7280;font-size:11px">('+escapeHTML(t.seatClass)+')</span>':'');
+    let priceHtml=ap?sym+Math.round(ap).toLocaleString()+'/adult':'—';
+    const cs='font-size:10.5px;color:#374151';
+    const csg='font-size:10.5px;color:#059669';
+    if(isFlightTransport(t.type)){
+      const infantP=parseNum(t.childInfantPrice)||(ap*0.1);
+      const flightP=parseNum(t.childFlightPrice)||(ap*0.5);
+      const nI=parseInt(t.childInfant)||0;
+      const nF=parseInt(t.childFlight)||0;
+      const nFF=parseInt(t.childFlightFull)||0;
+      if(nI>0) priceHtml+='<br><span style="'+cs+'">Infant×'+nI+': '+sym+Math.round(infantP).toLocaleString()+'/person (under 2)</span>';
+      if(nF>0) priceHtml+='<br><span style="'+cs+'">Child×'+nF+': '+sym+Math.round(flightP).toLocaleString()+'/person (2–12 yrs)</span>';
+      if(nFF>0) priceHtml+='<br><span style="'+cs+'">Child×'+nFF+': '+sym+Math.round(ap).toLocaleString()+'/person (12+ yrs)</span>';
+    } else {
+      const halfP=parseNum(t.childHalfPrice)||(ap*0.5);
+      const nFree=parseInt(t.childFree)||0;
+      const nHalf=parseInt(t.childHalf)||0;
+      const nFull=parseInt(t.childFull)||0;
+      if(nFree>0) priceHtml+='<br><span style="'+csg+'">Child×'+nFree+': Free (under 6, no seat)</span>';
+      if(nHalf>0) priceHtml+='<br><span style="'+cs+'">Child×'+nHalf+': '+sym+Math.round(halfP).toLocaleString()+'/person (6–14 yrs)</span>';
+      if(nFull>0) priceHtml+='<br><span style="'+cs+'">Child×'+nFull+': '+sym+Math.round(ap).toLocaleString()+'/person (14+ yrs)</span>';
+    }
+    return '<tr>'+secCell
+      +'<td style="'+cellS+'background:'+bg+'">'+escapeHTML(t.route||'—')+'</td>'
+      +'<td style="'+cellS+'background:'+bg+'">'+transportDetail+'</td>'
+      +'<td style="'+cellS+'background:'+bg+';text-align:right;font-weight:700;white-space:nowrap;line-height:1.8">'+priceHtml+'</td>'
+      +'</tr>';
+  }).join('')
+  :'<tr><td style="'+secS+'border-top:none" rowspan="2">Inter-city<br>Transport</td>'
+    +'<td style="'+cellS+'border-top:none;color:#9CA3AF;font-style:italic" colspan="2">—</td>'
+    +'<td style="'+cellS+'border-top:none;text-align:right">—</td></tr>';
+
+  const quoteNote=q.note?'<tr><td colspan="4" style="padding:10px 12px;font-size:11.5px;color:#374151;'+B+'background:#FFFDF5"><strong>Remarks:</strong> '+escapeHTML(q.note).replace(/\n/g,'<br>')+'</td></tr>':'';
+
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+    +'<title>Quotation - '+escapeHTML(c.name||'Guest')+'</title>'
+    +'<style>'
+    +'@page{size:A4;margin:10mm;}'
+    +'*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+    +'body{font-family:"Times New Roman",Times,serif;color:#333;background:#fff;font-size:12px;}'
+    +'.page{max-width:800px;margin:0 auto;padding:12px 16px;}'
+    +'table{width:100%;border-collapse:collapse;}'
+    +'.print-btn{position:fixed;right:16px;top:16px;background:#003366;color:#fff;border:none;border-radius:8px;padding:9px 16px;cursor:pointer;font-weight:700;font-size:13px;z-index:999;}'
+    +'@media print{.print-btn{display:none}.page{padding:0;max-width:none}}'
+    +'</style></head><body>'
+    +'<button class="print-btn" onclick="window.print()">Print / Save as PDF</button>'
+    +'<div class="page">'
+
+    // Header: logo + company name (original centered style)
+    +'<table style="margin-bottom:0"><tr>'
+    +'<td style="background:#003366;color:#fff;padding:12px 20px;text-align:center;border:2px solid #DEE0E3">'
+    +'<div style="display:flex;flex-direction:column;align-items:center;gap:2px">'
+    +'<svg viewBox="0 0 180 88" width="110" height="54" xmlns="http://www.w3.org/2000/svg">'
+    +'<defs><linearGradient id="fg" x1="50%" y1="0%" x2="50%" y2="100%"><stop offset="0%" stop-color="#4A90D9"/><stop offset="100%" stop-color="#1B4F8A"/></linearGradient>'
+    +'<clipPath id="fanClip"><path d="M 81.5,78.9 L 26.1,58.7 A 68,68,0,0,1,153.9,58.7 L 98.5,78.9 A 9,9,0,0,0,81.5,78.9 Z"/></clipPath></defs>'
+    +'<path d="M 81.5,78.9 L 26.1,58.7 A 68,68,0,0,1,153.9,58.7 L 98.5,78.9 A 9,9,0,0,0,81.5,78.9 Z" fill="url(#fg)"/>'
+    +'<path d="M 90,81 L 32.1,46.4 L 40.6,35.3 Z" fill="rgba(255,255,255,0.08)" clip-path="url(#fanClip)"/>'
+    +'<path d="M 90,81 L 51.0,26.3 L 63.1,19.5 Z" fill="rgba(255,255,255,0.08)" clip-path="url(#fanClip)"/>'
+    +'<path d="M 90,81 L 76.6,15.3 L 103.4,15.3 Z" fill="rgba(255,255,255,0.08)" clip-path="url(#fanClip)"/>'
+    +'<path d="M 90,81 L 116.9,19.5 L 129.0,26.3 Z" fill="rgba(255,255,255,0.08)" clip-path="url(#fanClip)"/>'
+    +'<path d="M 90,81 L 139.4,35.3 L 147.9,46.4 Z" fill="rgba(255,255,255,0.08)" clip-path="url(#fanClip)"/>'
+    +'<line x1="82.3" y1="77.3" x2="32.1" y2="46.4" stroke="rgba(255,255,255,0.5)" stroke-width="1.1"/>'
+    +'<line x1="83.5" y1="75.8" x2="40.6" y2="35.3" stroke="rgba(255,255,255,0.5)" stroke-width="1.1"/>'
+    +'<line x1="84.8" y1="74.6" x2="51.0" y2="26.3" stroke="rgba(255,255,255,0.5)" stroke-width="1.1"/>'
+    +'<line x1="86.4" y1="73.7" x2="63.1" y2="19.5" stroke="rgba(255,255,255,0.5)" stroke-width="1.1"/>'
+    +'<line x1="88.2" y1="73.2" x2="76.6" y2="15.3" stroke="rgba(255,255,255,0.5)" stroke-width="1.1"/>'
+    +'<line x1="90" y1="73" x2="90" y2="14" stroke="rgba(255,255,255,0.5)" stroke-width="1.1"/>'
+    +'<line x1="91.8" y1="73.2" x2="103.4" y2="15.3" stroke="rgba(255,255,255,0.5)" stroke-width="1.1"/>'
+    +'<line x1="93.6" y1="73.7" x2="116.9" y2="19.5" stroke="rgba(255,255,255,0.5)" stroke-width="1.1"/>'
+    +'<line x1="95.2" y1="74.6" x2="129.0" y2="26.3" stroke="rgba(255,255,255,0.5)" stroke-width="1.1"/>'
+    +'<line x1="96.5" y1="75.8" x2="139.4" y2="35.3" stroke="rgba(255,255,255,0.5)" stroke-width="1.1"/>'
+    +'<line x1="97.7" y1="77.3" x2="147.9" y2="46.4" stroke="rgba(255,255,255,0.5)" stroke-width="1.1"/>'
+    +'<path d="M 26.1,58.7 A 68,68,0,0,1,153.9,58.7" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2.5"/>'
+    +'<circle cx="90" cy="83" r="5" fill="#C4920E"/>'
+    +'</svg>'
+    +'<div style="line-height:1"><span style="font-family:Georgia,serif;font-size:22px;font-weight:700;color:#C4920E;letter-spacing:1px">orient</span></div>'
+    +'<div style="font-family:Georgia,serif;font-size:10px;color:#C4920E;letter-spacing:2px;font-weight:500">Surprises travel</div>'
+    +'</div></td></tr></table>'
+
+    // QUOTATION banner
+    +'<table style="margin-bottom:0"><tr>'
+    +'<td style="background:#0070C0;color:#fff;padding:8px;text-align:center;font-size:16px;font-weight:700;letter-spacing:3px;border:2px solid #DEE0E3;border-top:none">QUOTATION</td>'
+    +'</tr></table>'
+
+    // Client info
+    +'<table style="margin-bottom:0">'
+    +'<tr><td style="width:180px;padding:6px 12px;font-weight:700;'+B+'border-top:none">Quotation Date:</td>'
+    +'<td style="padding:6px 12px;'+B+'border-top:none;border-left:none">'+escapeHTML(today)+'</td></tr>'
+    +'<tr><td style="padding:6px 12px;font-weight:700;'+B+'border-top:none">Client Name:</td>'
+    +'<td style="padding:6px 12px;'+B+'border-top:none;border-left:none">'+escapeHTML(c.name||'—')+'</td></tr>'
+    +'<tr><td style="padding:6px 12px;font-weight:700;'+B+'border-top:none">No. of Persons:</td>'
+    +'<td style="padding:6px 12px;'+B+'border-top:none;border-left:none">'+escapeHTML(formatPaxEN(effectiveAdults,effectiveChildren,effectiveSeniors))+( c.travelTime?' &nbsp;|&nbsp; '+escapeHTML(formatTravelTimeEN(c.travelTime)):'' )+'</td></tr>'
+    +'</table>'
+
+    // Main 3-section table
+    +'<table style="margin-top:6px;table-layout:fixed;width:100%">'
+    +'<colgroup><col style="width:13%"><col style="width:22%"><col style="width:36%"><col style="width:29%"></colgroup>'
+    +'<thead><tr>'
+    +'<th style="'+hdrS+'white-space:nowrap">Cost Category</th>'
+    +'<th style="'+hdrS+'border-left:none">City / Route / Guide</th>'
+    +'<th style="'+hdrS+'border-left:none">Itinerary / Transport</th>'
+    +'<th style="'+hdrS+'border-left:none;text-align:right;white-space:nowrap">Unit Price ('+escapeHTML(q.currency)+'/person)</th>'
+    +'</tr></thead>'
+    +'<tbody>'
+
+    // Section 1: City Costs
+    +cityRows
+    +'<tr>'
+    +'<td style="'+subS+'" colspan="2">Subtotal'
+    +(effectiveAdults||effectiveChildren||effectiveSeniors?' <span style="font-weight:400;font-size:11px;color:#555">('+[effectiveAdults?effectiveAdults+'×Adult':'',effectiveChildren?effectiveChildren+'×Child':'',effectiveSeniors?effectiveSeniors+'×Senior':''].filter(Boolean).join(' + ')+')</span>':'')
+    +'</td>'
+    +'<td style="'+subS+'text-align:right;white-space:nowrap">'+(cityGroupTotal?sym+Math.round(cityGroupTotal).toLocaleString():'—')+'</td>'
+    +'</tr>'
+
+    // Section 2: Guide Service (only if at least one option filled)
+    +(hasGuide
+      ?(()=>{
+        const N=guideOptions.length;
+        return guideOptions.map((opt,i)=>{
+          const isSelected=selectedGuideKey&&selectedGuideKey===opt.key;
+          const bg=isSelected?'#EFF6FF':(i%2===0?'#FFFFFF':'#F0F4FF');
+          const secCell=i===0?'<td style="'+secS+'border-top:none" rowspan="'+(N+1)+'">Guide<br>Service</td>':'';
+          const checkbox=isSelected
+            ?'<span style="display:inline-block;width:14px;height:14px;background:#003366;border-radius:2px;margin-right:6px;vertical-align:middle;text-align:center;line-height:14px;color:#fff;font-size:11px">✓</span>'
+            :'<span style="display:inline-block;width:13px;height:13px;border:1.5px solid #003366;border-radius:2px;margin-right:6px;vertical-align:middle"></span>';
+          const labelStyle=isSelected?'font-weight:700;color:#003366':'';
+          return '<tr>'+secCell
+            +'<td style="'+cellS+'background:'+bg+';border-top:none" colspan="2">'+checkbox+'<span style="'+labelStyle+'">'+escapeHTML(opt.label)+'</span>'+(isSelected?' <span style="font-size:10px;color:#0070C0;font-weight:600">(Selected)</span>':'')+'</td>'
+            +'<td style="'+cellS+'background:'+bg+';border-top:none;text-align:right;font-weight:700;white-space:nowrap">'+sym+Math.round(opt.price).toLocaleString()+'</td>'
+            +'</tr>';
+        }).join('')
+        +(selectedGuideKey
+          ?'<tr><td style="'+subS+'border-top:none;font-size:11px;color:#059669;font-weight:500" colspan="2">✓ Guide service selected — included in final quotation upon confirmation</td>'
+          :'<tr><td style="'+subS+'border-top:none;font-size:11px;color:#666;font-weight:400" colspan="2">☝ Please select one guide service option above (not included in Grand Total)</td>')
+        +'<td style="'+subS+'border-top:none;text-align:right">—</td></tr>';
+      })()
+      :'')
+
+    // City + Guide subtotal row (only if both guide and transport exist, to visually separate)
+    +(hasTransport&&(cityGroupTotal||guideGroupTotal)
+      ?'<tr>'
+       +'<td colspan="3" style="background:#E8F0F8;font-weight:700;font-size:11.5px;padding:6px 10px;border:1px solid #DEE0E3;color:#003366">City Costs + Guide Service Subtotal</td>'
+       +'<td style="background:#E8F0F8;font-weight:700;font-size:12px;padding:6px 10px;border:1px solid #DEE0E3;text-align:right;color:#003366;white-space:nowrap">'+sym+Math.round(cityGroupTotal+guideGroupTotal).toLocaleString()+'</td>'
+       +'</tr>'
+      :'')
+
+    // Section 3: Transportation (only if filled)
+    +(hasTransport
+      ?transRows+(()=>{
+          // label: show per-trip pax composition (take max count per category, since same travellers on each leg)
+          const mFree=Math.max(0,...q.transports.filter(t=>!isFlightTransport(t.type)).map(t=>parseInt(t.childFree)||0));
+          const mHalf=Math.max(0,...q.transports.filter(t=>!isFlightTransport(t.type)).map(t=>parseInt(t.childHalf)||0));
+          const mFull=Math.max(0,...q.transports.filter(t=>!isFlightTransport(t.type)).map(t=>parseInt(t.childFull)||0));
+          const mInfant=Math.max(0,...q.transports.filter(t=>isFlightTransport(t.type)).map(t=>parseInt(t.childInfant)||0));
+          const mFlight=Math.max(0,...q.transports.filter(t=>isFlightTransport(t.type)).map(t=>parseInt(t.childFlight)||0));
+          const mFlightFull=Math.max(0,...q.transports.filter(t=>isFlightTransport(t.type)).map(t=>parseInt(t.childFlightFull)||0));
+          const parts=[];
+          if(effectiveAdults) parts.push(effectiveAdults+'×Adult');
+          if(mInfant) parts.push(mInfant+'×Infant');
+          if(mFlight) parts.push(mFlight+'×Child(concession)');
+          if(mFlightFull) parts.push(mFlightFull+'×Child(full)');
+          if(mFree) parts.push(mFree+'×Child(free)');
+          if(mHalf) parts.push(mHalf+'×Child(concession)');
+          if(mFull) parts.push(mFull+'×Child(full)');
+          if(effectiveSeniors) parts.push(effectiveSeniors+'×Senior');
+          const segCount=q.transports.length;
+          const lbl=parts.length?' <span style="font-weight:400;font-size:11px;color:#555">('+parts.join(' + ')+(segCount>1?' × '+segCount+' segments':'')+')</span>':'';
+          return '<tr>'
+            +'<td style="'+subS+'border-top:none" colspan="2">Subtotal'+lbl+'</td>'
+            +'<td style="'+subS+'border-top:none;text-align:right;white-space:nowrap">'+(transGroupTotal?sym+Math.round(transGroupTotal).toLocaleString():'—')+'</td>'
+            +'</tr>';
+        })()
+      :'')
+
+    +'</tbody>'
+    +'</table>'
+    // Grand Total — rendered outside table so break-before:avoid works reliably
+    +'<div style="break-before:avoid;page-break-before:avoid;break-inside:avoid;page-break-inside:avoid;">'
+    +(quoteNote?'<table style="width:100%;border-collapse:collapse;margin-top:0">'+quoteNote+'</table>':'')
+    +'<table style="width:100%;border-collapse:collapse;margin-top:0;border-top:2px solid #0070C0">'
+    +'<tbody><tr>'
+    +'<td colspan="3" style="background:#003366;color:#fff;font-weight:700;font-size:12px;padding:7px 10px;'+B+'vertical-align:middle">Grand Total :</td>'
+    +'<td style="background:#003366;color:#FFD700;font-weight:700;font-size:13px;padding:7px 10px;'+B+'border-left:none;text-align:right;white-space:nowrap">'+sym+(grandGroupTotal?Math.round(grandGroupTotal).toLocaleString():'0')+'</td>'
+    +'</tr></tbody></table>'
+    +'</div>'
+
+    // Notes
+    +'<div style="margin-top:8px;font-size:10px;color:#374151;line-height:1.6;border-top:1px solid #DEE0E3;padding-top:6px">'
+    +'<div>1. Our pricing calculation is based on CNY, regardless of the exchange rates between CNY and other currency types.</div>'
+    +'<div>2. This quotation is valid for 7 days, and the final confirmation is subject to payment.</div>'
+    +'<div>3. If you need to adjust the itinerary, add or reduce service items, please feel free to contact us to update the quotation.</div>'
+    +'<div>4. <strong>Deposit Policy:</strong> We kindly request a 40% deposit of the total package price upon confirmation of your booking. This prepayment secures your hotel rooms, guided tours and reserved local transportation arrangements. The remaining 60% balance shall be settled prior to your arrival in China or as agreed mutually. (Accepted payment methods include Alipay, PayPal and international bank wire transfer.)</div>'
+    +'</div>'
+
+    +'<div style="margin-top:6px;text-align:center;font-size:10px;color:#6B7280;font-style:italic;border-top:1px solid #DEE0E3;padding-top:5px">'
+    +'Orient Surprises Travel — Bringing unforgettable journeys in China with comfort, care, and local expertise.'
+    +'</div>'
+    +'</div></body></html>';
+}
+
+function generateInvoicePDF(qi){
+  const c=getClient();
+  if(!c){ alert('请先打开一个客户详情页'); return; }
+  if(!c.quotes||!c.quotes.length){ alert('请先新增并填写一次报价'); return; }
+  if(typeof qi!=='number') qi=activeQuoteIndex||0;
+  if(!c.quotes[qi]) qi=c.quotes.length-1;
+  const html=invoiceHTML(c,c.quotes[qi],qi);
+  const w=window.open('','_blank');
+  if(!w){ alert('浏览器阻止了弹窗，请允许弹窗后再试'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+  setTimeout(()=>{ w.focus(); w.print(); },500);
+}
+
+function clearAllData(){
+  if(!confirm('确认清除所有客户数据？此操作不可恢复。')) return;
+  clients=[]; currentId=null; save(); renderList(); updateStats();
+}
+function exportJSON(){
+  const blob=new Blob([JSON.stringify(clients,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='travel_crm_'+new Date().toISOString().slice(0,10)+'.json'; a.click();
+}
+function csvSafe(v){ return `"${(v||'').toString().replace(/"/g,'""')}"`; }
+function exportCSV(){
+  const headers=['姓名','国家城市','跟进方式','出行人数','人员构成','出行时间','行程天数','路线','导游方案','意向等级','跟进状态','城市费用合计','报价总计','币种','城市分段','备注','创建日期'];
+  const rows=clients.map(c=>{
+    const q=latestQuote(c);
+    const r=q?calcQuoteTotals(q,getClientPax(c)):{cityGroupTotal:'',grandTotal:''};
+    const cities=q?(q.cities||[]).map(city=>`${city.name||'未命名'}(${city.itinerary||''}):${city.priceNoGuide||0}`).join('；'):'';
+    return [c.name,c.country,c.contactChannel,c.pax,c.paxDetail,c.travelTime,c.days,c.route,c.guide,c.level,c.status,
+      r.cityGroupTotal?Math.round(r.cityGroupTotal):'',r.grandTotal?Math.round(r.grandTotal):'',q?q.currency:'',cities,c.note,c.createdAt].map(csvSafe);
+  });
+  const csv=[headers.join(','),...rows.map(r=>r.join(','))].join('\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='travel_crm_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+}
+function importJSON(e){
+  const file=e.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    try{
+      const data=JSON.parse(ev.target.result);
+      if(!Array.isArray(data))throw new Error();
+      if(!confirm(`导入 ${data.length} 条客户数据？这将合并到现有数据。`))return;
+      const existingIds=new Set(clients.map(c=>c.id));
+      data.forEach(c=>{ const nc=normalizeClient(c); if(!existingIds.has(nc.id))clients.push(nc); });
+      save(); renderList(); updateStats();
+    }catch(err){ alert('文件格式错误，请选择正确的JSON备份文件'); }
+  };
+  reader.readAsText(file); e.target.value='';
+}
+
+function openFuPasteModal(){
+  document.getElementById('fu-paste-input').value='';
+  document.getElementById('modal-fu-paste').classList.add('open');
+}
+function applyFuPaste(){
+  const text=document.getElementById('fu-paste-input').value.trim();
+  if(!text){ alert('请先粘贴内容'); return; }
+  const lines=text.split('\n').map(l=>l.trim()).filter(l=>l);
+  const kv=(key)=>{
+    for(const line of lines){
+      const m=line.match(new RegExp('(?:'+key+')[：:](.+)'));
+      if(m&&m[1]) return m[1].trim();
+    }
+    return '';
+  };
+  const getMultiLine=(key)=>{
+    const re=new RegExp('(?:'+key+')[：:]');
+    let collecting=false, out=[];
+    for(const line of lines){
+      if(re.test(line)){ collecting=true; const rest=line.replace(re,'').trim(); if(rest) out.push(rest); }
+      else if(collecting){ if(/^[一-龥a-zA-Z]+[：:]/.test(line)) break; if(line) out.push(line); }
+    }
+    return out.join('\n');
+  };
+  const date=kv('跟进日期');
+  const method=kv('跟进方式|联系方式');
+  const content=getMultiLine('跟进内容摘要|内容摘要|跟进内容');
+  const feedback=getMultiLine('客户反馈');
+  const todo=getMultiLine('待办事项');
+  const nextDate=kv('下次跟进日期|下次跟进');
+  const set=(id,v)=>{ const el=document.getElementById(id); if(el&&v) el.value=v; };
+  set('fu-date', date);
+  set('fu-content', content);
+  set('fu-feedback', feedback);
+  set('fu-todo', todo);
+  set('fu-next', nextDate);
+  if(method){
+    const sel=document.getElementById('fu-method');
+    if(sel) [...sel.options].forEach(o=>{ if(o.value===method||o.text===method) sel.value=o.value; });
+  }
+  document.getElementById('modal-fu-paste').classList.remove('open');
+}
+function openPasteModal(){
+  document.getElementById('paste-input').value='';
+  document.getElementById('paste-preview').style.display='none';
+  document.getElementById('modal-paste').classList.add('open');
+}
+function parseClientPaste(text){
+  const result={};
+  const followups=[];
+  const lines=text.split('\n').map(l=>l.trim()).filter(l=>l);
+  // Extract key:value pairs
+  const kv=(key)=>{
+    for(const line of lines){
+      const m=line.match(new RegExp('(?:'+key+')[：:](.+)'));
+      if(m&&m[1]) return m[1].trim();
+    }
+    return '';
+  };
+  result.name=kv('客户姓名');
+  result.country=kv('国家|所属国家');
+  result.channel=kv('跟进方式|联系方式');
+  result.travelTime=kv('目标出行时间|出行时间|出行日期');
+  result.route=kv('意向路线|路线|行程路线');
+  result.status=kv('当前状态|跟进状态|状态');
+  result.level=kv('意向等级|等级');
+  result.note=kv('备注');
+  result.paxDetail=kv('人员构成|人员备注');
+  // Days: extract number from "5D4N" or "5天" or "Maybe 5D4N"
+  const daysRaw=kv('初步行程天数|行程天数|天数');
+  const daysM=daysRaw.match(/(\d+)\s*[Dd天]/);
+  result.days=daysM?daysM[1]:'';
+  result.daysRaw=daysRaw;
+  // Pax total
+  const paxRaw=kv('出行人数');
+  const paxM=paxRaw.match(/(\d+)/);
+  result.pax=paxM?paxM[1]:'';
+  // Pax breakdown from 人员构成
+  const compRaw=result.paxDetail||kv('人员构成');
+  const adultM=compRaw.match(/(\d+)\s*(?:位|名|个)?(?:成人|大人|adult)/i);
+  const childM=compRaw.match(/(\d+)\s*(?:位|名|个)?(?:儿童|小孩|child)/i);
+  const seniorM=compRaw.match(/(\d+)\s*(?:位|名|个)?(?:老人|长者|senior)/i);
+  result.adults=adultM?adultM[1]:'';
+  result.children=childM?childM[1]:'';
+  result.seniors=seniorM?seniorM[1]:'';
+
+  // Parse follow-up sections
+  const fuBlocks=text.split(/跟进记录\s*\d+/);
+  for(let i=1;i<fuBlocks.length;i++){
+    const block=fuBlocks[i];
+    const fuLines=block.split('\n').map(l=>l.trim()).filter(l=>l);
+    const fkv=(key)=>{
+      for(const line of fuLines){
+        const m=line.match(new RegExp('(?:'+key+')[：:](.+)'));
+        if(m&&m[1]) return m[1].trim();
+      }
+      return '';
+    };
+    // Multi-line content fields
+    const getMultiLine=(key)=>{
+      let collecting=false, out=[];
+      const re=new RegExp('(?:'+key+')[：:]');
+      for(const line of fuLines){
+        if(re.test(line)){
+          collecting=true;
+          const rest=line.replace(re,'').trim();
+          if(rest) out.push(rest);
+        } else if(collecting){
+          if(/^[一-龥a-zA-Z]+[：:]/.test(line)) break;
+          if(line) out.push(line);
+        }
+      }
+      return out.join('\n');
+    };
+    const date=fkv('跟进日期');
+    const channel=fkv('跟进方式|联系方式');
+    const content=getMultiLine('跟进内容摘要|内容摘要|跟进内容');
+    const feedback=getMultiLine('客户反馈');
+    const todo=getMultiLine('待办事项');
+    const nextDate=fkv('下次跟进日期|下次跟进');
+    const fullContent=[
+      content,
+      feedback?'【客户反馈】'+feedback:'',
+      todo?'【待办】'+todo:''
+    ].filter(Boolean).join('\n');
+    if(date||content) followups.push({date,channel,content:fullContent,nextDate,status:''});
+  }
+  result.followups=followups;
+  return result;
+}
+function previewPaste(){
+  const text=document.getElementById('paste-input').value.trim();
+  if(!text) return;
+  const r=parseClientPaste(text);
+  const lines=[];
+  if(r.name) lines.push(`<b>姓名：</b>${r.name}`);
+  if(r.country) lines.push(`<b>国家：</b>${r.country}`);
+  if(r.channel) lines.push(`<b>渠道：</b>${r.channel}`);
+  if(r.pax) lines.push(`<b>人数：</b>${r.pax}人${r.adults?'（成人'+r.adults+(r.children?'+儿童'+r.children:'')+(r.seniors?'+老人'+r.seniors:'')+'）':''}`);
+  if(r.travelTime) lines.push(`<b>出行时间：</b>${r.travelTime}`);
+  if(r.route) lines.push(`<b>路线：</b>${r.route}`);
+  if(r.days||r.daysRaw) lines.push(`<b>天数：</b>${r.daysRaw||r.days}`);
+  if(r.status) lines.push(`<b>状态：</b>${r.status}`);
+  if(r.level) lines.push(`<b>等级：</b>${r.level}`);
+  if(r.note) lines.push(`<b>备注：</b>${r.note}`);
+  if(r.followups.length) lines.push(`<b>跟进记录：</b>${r.followups.length}条`);
+  const preview=document.getElementById('paste-preview');
+  preview.innerHTML=lines.join('<br>')||(lines.length?'':'⚠️ 未识别到字段，请检查格式是否包含"字段名：值"');
+  preview.style.display='block';
+}
+function applyPaste(){
+  const text=document.getElementById('paste-input').value.trim();
+  if(!text){ alert('请先粘贴内容'); return; }
+  const r=parseClientPaste(text);
+  // Fill client form fields
+  const set=(id,v)=>{ const el=document.getElementById(id); if(el&&v) el.value=v; };
+  set('f-name',r.name);
+  set('f-country',r.country);
+  set('f-pax',r.pax);
+  set('f-days',r.days);
+  set('f-pax-adults',r.adults);
+  set('f-pax-children',r.children);
+  set('f-pax-seniors',r.seniors);
+  set('f-pax-detail',r.paxDetail);
+  set('f-travel-time',r.travelTime);
+  set('f-route',r.route);
+  set('f-note',r.note);
+  // Channel select
+  const chan=document.getElementById('f-contact-channel');
+  if(chan&&r.channel){
+    [...chan.options].forEach(o=>{ if(o.value===r.channel||o.text===r.channel) chan.value=o.value; });
+  }
+  // Status select
+  const sta=document.getElementById('f-status');
+  if(sta&&r.status){
+    [...sta.options].forEach(o=>{ if(o.value===r.status||o.text===r.status) sta.value=o.value; });
+  }
+  // Level select
+  const lev=document.getElementById('f-level');
+  if(lev&&r.level){
+    [...lev.options].forEach(o=>{ if(o.value===r.level||o.text===r.level) lev.value=o.value; });
+  }
+  // Store parsed followups for saveClient to pick up
+  window._pendingFollowups=r.followups;
+  document.getElementById('modal-paste').classList.remove('open');
+  // Show client modal (already open) or open it
+  document.getElementById('modal-client').classList.add('open');
+  syncPaxTotal();
+  alert(`✓ 已填入${r.name?'「'+r.name+'」':''}的信息${r.followups.length?'，含'+r.followups.length+'条跟进记录（保存后自动添加）':''}`);
+}
+// ── Itinerary functions ──────────────────────────────────────────
+window._activeItinIndex=0;
+function switchItinTab(vi){ window._activeItinIndex=vi; renderDetail(getClient()); }
+function deleteItinerary(vi){
+  const c=getClient(); if(!c)return;
+  if(!confirm('确认删除此版本行程？')) return;
+  c.itineraries.splice(vi,1);
+  window._activeItinIndex=Math.max(0,vi-1);
+  save(); renderDetail(c);
+}
+function saveItineraryNote(vi,text){
+  const c=getClient(); if(!c||!c.itineraries[vi])return;
+  c.itineraries[vi].notes=text; save();
+}
+function handleItineraryUpload(e){
+  const file=e.target.files[0]; if(!file)return;
+  e.target.value='';
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      if(typeof XLSX==='undefined'){ alert('Excel解析库未加载，请检查网络连接后刷新页面'); return; }
+      const wb=XLSX.read(ev.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      const itin=parseItineraryRows(rows, file.name);
+      const c=getClient(); if(!c)return;
+      const nextVer=(c.itineraries.length?Math.max(...c.itineraries.map(x=>x.version))+1:1);
+      itin.version=nextVer;
+      itin.id=uid();
+      itin.uploadedAt=new Date().toISOString().slice(0,10);
+      c.itineraries.push(itin);
+      window._activeItinIndex=c.itineraries.length-1;
+      save(); renderDetail(c);
+    }catch(err){ alert('解析失败：'+err.message); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+function parseItineraryRows(rows, filename){
+  // Find title row (merged, non-empty, no "Day" keyword)
+  let title='', subtitle='', headerRowIdx=-1, notesRow='';
+  for(let i=0;i<rows.length;i++){
+    const row=rows[i];
+    const first=String(row[0]||'').trim();
+    const joined=row.map(x=>String(x||'').trim()).join(' ');
+    // Detect header row: contains "Day" or "day" in first col or "Schedule" somewhere
+    if(/^day$/i.test(first)||(/^\d+$/.test(first)&&i>0)){
+      if(headerRowIdx<0) headerRowIdx=i;
+    }
+    if(joined.toLowerCase().includes('schedule')||joined.toLowerCase().includes('activities')){
+      headerRowIdx=i; break;
+    }
+  }
+  // Rows before header = title/subtitle
+  if(headerRowIdx>0) title=rows.slice(0,headerRowIdx).map(r=>r.filter(x=>x).join(' ')).filter(x=>x).join(' | ');
+  // If no header found, treat row 0 as title, row 2 as start
+  if(headerRowIdx<0) headerRowIdx=2;
+  // Extract day rows
+  const days=[];
+  for(let i=headerRowIdx+1;i<rows.length;i++){
+    const row=rows[i];
+    const dayVal=String(row[0]||'').trim();
+    const actVal=String(row[1]||'').trim();
+    if(!dayVal&&!actVal) continue;
+    // Check if it's a notes/footer row (no numeric day)
+    if(dayVal&&!/^\d+$/.test(dayVal)&&!actVal){ notesRow+=(notesRow?'\n':'')+row.filter(x=>x).join(' '); continue; }
+    if(actVal||/^\d+$/.test(dayVal)){
+      days.push({
+        day: dayVal||String(days.length+1),
+        activities: actVal,
+        meals: String(row[2]||'').trim(),
+        accommodation: String(row[3]||'').trim()
+      });
+    }
+  }
+  // Strip file extension for name
+  const name=filename.replace(/\.[^.]+$/,'');
+  return {name, title, days, notes:'', notesRow};
+}
+function generateItineraryPDF(){
+  const c=getClient(); if(!c)return;
+  const vi=Math.min(window._activeItinIndex||0,(c.itineraries||[]).length-1);
+  const itin=(c.itineraries||[])[vi];
+  if(!itin){ alert('请先上传行程'); return; }
+  const w=window.open('','_blank');
+  w.document.write(itineraryHTML(c,itin));
+  w.document.close();
+  setTimeout(()=>w.print(),600);
+}
+function itineraryHTML(c,itin){
+  const today=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  const escH=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const B='border:1px solid #DEE0E3;';
+  const hdrS='background:#003366;color:#fff;padding:8px 10px;font-weight:700;font-size:11.5px;'+B;
+  const cellS='padding:7px 10px;vertical-align:top;font-size:11px;line-height:1.7;'+B;
+  const altS='background:#F0F4FF;';
+  const dayRows=(itin.days||[]).map((d,i)=>`<tr>
+    <td style="${cellS}${i%2?altS:''}text-align:center;font-weight:700;width:40px;white-space:nowrap">${escH(d.day)}</td>
+    <td style="${cellS}${i%2?altS:''}white-space:pre-wrap">${escH(d.activities)}</td>
+    <td style="${cellS}${i%2?altS:''}width:130px;white-space:pre-wrap">${escH(d.meals)}</td>
+    <td style="${cellS}${i%2?altS:''}width:170px">${escH(d.accommodation)}</td>
+  </tr>`).join('');
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Itinerary - ${escH(c.name||'')}</title>
+  <style>
+    body{font-family:Arial,sans-serif;font-size:11px;color:#333;margin:0;padding:0}
+    @page{size:A4;margin:12mm 14mm}
+    @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+    table{width:100%;border-collapse:collapse}
+  </style></head><body>
+  <div style="background:#003366;color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:0">
+    <div>
+      <div style="font-size:18px;font-weight:700;letter-spacing:1px">orient <span style="font-weight:300">Surprises travel</span></div>
+      <div style="font-size:10px;opacity:.8;margin-top:2px">WhatsApp: +86 136 0739 2306 &nbsp;|&nbsp; Email: orientsuprisestravel@gmail.com</div>
+    </div>
+    <div style="text-align:right;font-size:10px;opacity:.8">${today}</div>
+  </div>
+  <div style="background:#0070C0;color:#fff;text-align:center;padding:6px;font-size:13px;font-weight:700;letter-spacing:2px;margin-bottom:0">ITINERARY</div>
+  <table style="margin-bottom:6px;border:1px solid #DEE0E3;border-top:none">
+    <tr>
+      <td style="padding:5px 10px;font-size:11px;border-right:1px solid #DEE0E3;width:120px;font-weight:600">Client Name:</td>
+      <td style="padding:5px 10px;font-size:11px">${escH(c.name||'')}</td>
+      <td style="padding:5px 10px;font-size:11px;border-left:1px solid #DEE0E3;width:120px;font-weight:600">Travel Date:</td>
+      <td style="padding:5px 10px;font-size:11px">${escH(c.travelTime||'—')}</td>
+    </tr>
+    <tr style="border-top:1px solid #DEE0E3">
+      <td style="padding:5px 10px;font-size:11px;border-right:1px solid #DEE0E3;font-weight:600">No. of Persons:</td>
+      <td style="padding:5px 10px;font-size:11px">${escH(formatPaxEN(parseInt(c.paxAdults)||0,parseInt(c.paxChildren)||0,parseInt(c.paxSeniors)||0)||(c.pax||'—'))}</td>
+      <td style="padding:5px 10px;font-size:11px;border-left:1px solid #DEE0E3;font-weight:600">Itinerary:</td>
+      <td style="padding:5px 10px;font-size:11px;font-weight:600;color:#003366">${escH(itin.name||'')} (V${itin.version})</td>
+    </tr>
+  </table>
+  <table>
+    <thead><tr>
+      <th style="${hdrS}width:40px">Day</th>
+      <th style="${hdrS}">Schedule &amp; Activities</th>
+      <th style="${hdrS}width:130px">Meals</th>
+      <th style="${hdrS}width:170px">Accommodation</th>
+    </tr></thead>
+    <tbody>${dayRows}</tbody>
+  </table>
+  ${itin.notesRow?`<div style="margin-top:6px;font-size:10px;color:#555;border-top:1px solid #DEE0E3;padding-top:5px">${escH(itin.notesRow)}</div>`:''}
+  <div style="margin-top:8px;font-size:10px;color:#6B7280;text-align:center;font-style:italic;border-top:1px solid #DEE0E3;padding-top:5px">
+    Orient Surprises Travel — Bringing unforgettable journeys in China with comfort, care, and local expertise.
+  </div>
+  </body></html>`;
+}
+// ────────────────────────────────────────────────────────────────
+function openSyncModal(){
+  try{ document.getElementById('sync-export-code').value=btoa(unescape(encodeURIComponent(JSON.stringify(clients)))); }
+  catch(e){ document.getElementById('sync-export-code').value=btoa(JSON.stringify(clients)); }
+  document.getElementById('sync-import-code').value='';
+  document.getElementById('modal-sync').classList.add('open');
+}
+function copySyncCode(){
+  const ta=document.getElementById('sync-export-code');
+  ta.select(); ta.setSelectionRange(0,99999);
+  try{ document.execCommand('copy'); alert('同步码已复制！'); }
+  catch(e){ alert('请手动复制上方文本框中的同步码。'); }
+}
+function importSyncCode(){
+  const code=document.getElementById('sync-import-code').value.trim();
+  if(!code){ alert('请先粘贴同步码'); return; }
+  try{
+    let data;
+    try{ data=JSON.parse(decodeURIComponent(escape(atob(code)))); }
+    catch(e){ data=JSON.parse(atob(code)); }
+    if(!Array.isArray(data))throw new Error();
+    if(!confirm(`同步 ${data.length} 条客户数据？同ID的客户将被覆盖，新客户将合并添加。`))return;
+    data.forEach(c=>{ const nc=normalizeClient(c); const idx=clients.findIndex(x=>x.id===nc.id); if(idx>-1)clients[idx]=nc; else clients.push(nc); });
+    save(); renderList(); updateStats();
+    document.getElementById('modal-sync').classList.remove('open');
+    alert('同步成功！');
+  }catch(err){ alert('同步码格式错误，请确认复制完整。'); }
+}
+
+// ── 跟进提醒系统 ──────────────────────────────────────────
+function todayStr(){
+  return new Date().toISOString().slice(0,10); // YYYY-MM-DD
+}
+function getDueFollowups(){
+  const today=todayStr();
+  const due=[];
+  clients.forEach(c=>{
+    (c.followups||[]).forEach((f,fi)=>{
+      if(f.nextDate&&f.nextDate<=today&&f.status!=='完成'){
+        due.push({client:c.name, date:f.nextDate, content:f.content||'', clientId:c.id, fi});
+      }
+    });
+  });
+  return due;
+}
+function showReminderBanner(due){
+  let banner=document.getElementById('reminder-banner');
+  if(!banner){
+    banner=document.createElement('div');
+    banner.id='reminder-banner';
+    banner.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;background:#D97706;color:#fff;padding:10px 16px;font-size:13px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,.2)';
+    document.body.prepend(banner);
+  }
+  const overdue=due.filter(d=>d.date<todayStr());
+  const today=due.filter(d=>d.date===todayStr());
+  const lines=[];
+  if(today.length) lines.push(`📅 今日跟进 ${today.length} 项：`+today.map(d=>d.client).join('、'));
+  if(overdue.length) lines.push(`⚠️ 逾期未跟进 ${overdue.length} 项：`+overdue.map(d=>d.client+'('+d.date+')').join('、'));
+  banner.innerHTML=lines.join(' &nbsp;|&nbsp; ')
+    +'<button onclick="document.getElementById(\'reminder-banner\').remove()" style="margin-left:auto;background:rgba(255,255,255,.25);border:none;color:#fff;border-radius:5px;padding:3px 10px;cursor:pointer;font-size:12px">忽略</button>';
+}
+function fireBrowserNotification(due){
+  if(Notification.permission!=='granted') return;
+  const today=due.filter(d=>d.date===todayStr());
+  const overdue=due.filter(d=>d.date<todayStr());
+  if(today.length){
+    new Notification('Orient CRM — 今日跟进提醒',{
+      body:'今日需跟进：'+today.map(d=>d.client).join('、'),
+      icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><text y="28" font-size="28">🧳</text></svg>'
+    });
+  }
+  if(overdue.length){
+    new Notification('Orient CRM — 逾期跟进提醒',{
+      body:'以下客户跟进已逾期：'+overdue.map(d=>d.client+'('+d.date+')').join('、'),
+      icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><text y="28" font-size="28">⚠️</text></svg>'
+    });
+  }
+}
+function checkFollowupReminders(){
+  const due=getDueFollowups();
+  if(!due.length) return;
+  showReminderBanner(due);
+  fireBrowserNotification(due);
+}
+function scheduleNineAM(){
+  const now=new Date();
+  const next9=new Date(now);
+  next9.setHours(9,0,0,0);
+  if(next9<=now) next9.setDate(next9.getDate()+1); // already past 9am today → schedule tomorrow
+  const ms=next9-now;
+  setTimeout(()=>{
+    checkFollowupReminders();
+    setInterval(checkFollowupReminders, 24*60*60*1000); // then every 24h
+  }, ms);
+}
+function requestNotifPermission(){
+  if(!('Notification' in window)) return;
+  if(Notification.permission==='default'){
+    Notification.requestPermission();
+  }
+}
+
+load(); renderList(); updateStats();
+// 页面加载时立即检查（每次打开都检查）
+checkFollowupReminders();
+// 同时在每天9点自动检查（页面常驻时）
+scheduleNineAM();
+// 首次运行时申请通知权限
+requestNotifPermission();
+</script>
+</body>
+</html>
