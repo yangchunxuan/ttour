@@ -112,6 +112,34 @@ async def _do_new_folder(session, dom_state, args, planner) -> ActionResult:
     return ActionResult(ok=ok, message=msg)
 
 
+def probe_path(raw: str, contains: str | None = None) -> tuple[bool, str, dict]:
+    """纯函数：查真实文件系统，返回 (ok, 人读消息, 结果dict)。verify_path 动作与
+    acceptance 后置条件共用这一份逻辑（单一真相）。**只回布尔，绝不回传文件正文**
+    ——正文经 broker→DeepSeek 就 egress 了（§2A.2）。"""
+    import os
+    p = os.path.expanduser(str(raw))
+    exists = os.path.exists(p)
+    is_file = os.path.isfile(p)
+    is_dir = os.path.isdir(p)
+    result = {"path": p, "exists": exists, "is_file": is_file, "is_dir": is_dir}
+    ok = exists
+    if contains not in (None, ""):
+        needle = str(contains)
+        hit = False
+        if is_file:
+            try:
+                with open(p, "r", encoding="utf-8", errors="replace") as fh:
+                    hit = needle in fh.read(1_000_000)  # 只读进内存做判断
+            except Exception as e:  # noqa: BLE001
+                result["read_error"] = str(e)
+        result["contains_ok"] = hit   # 只留布尔，绝不回传正文
+        ok = ok and hit
+    msg = f"verify_path: {p} exists={exists} file={is_file} dir={is_dir}"
+    if contains not in (None, ""):
+        msg += f" contains({str(contains)!r})={result['contains_ok']}"
+    return ok, msg, result
+
+
 async def _do_verify_path(session, dom_state, args, planner) -> ActionResult:
     """接地气的自我验证：直接查 VM 真实文件系统，确认某路径的产物真的存在
     （治「假成功」的根——别靠 GUI 看着像成功就 done，A2 教训）。
@@ -122,33 +150,7 @@ async def _do_verify_path(session, dom_state, args, planner) -> ActionResult:
     raw = str(args.get("path", "")).strip()
     if not raw:
         return ActionResult(ok=False, message="verify_path failed: empty path")
-    contains = args.get("contains")
-    contains = None if contains in (None, "") else str(contains)
-
-    def _sync() -> tuple[bool, str, dict]:
-        import os
-        p = os.path.expanduser(raw)
-        exists = os.path.exists(p)
-        is_file = os.path.isfile(p)
-        is_dir = os.path.isdir(p)
-        result = {"path": p, "exists": exists, "is_file": is_file, "is_dir": is_dir}
-        ok = exists
-        if contains is not None:
-            hit = False
-            if is_file:
-                try:
-                    with open(p, "r", encoding="utf-8", errors="replace") as fh:
-                        hit = contains in fh.read(1_000_000)  # 只读进内存做判断
-                except Exception as e:  # noqa: BLE001
-                    result["read_error"] = str(e)
-            result["contains_ok"] = hit   # 只留布尔，绝不回传正文
-            ok = ok and hit
-        msg = f"verify_path: {p} exists={exists} file={is_file} dir={is_dir}"
-        if contains is not None:
-            msg += f" contains({contains!r})={result['contains_ok']}"
-        return ok, msg, result
-
-    ok, msg, result = await asyncio.to_thread(_sync)
+    ok, msg, result = await asyncio.to_thread(probe_path, raw, args.get("contains"))
     return ActionResult(ok=ok, message=msg, extracted=result)
 
 
