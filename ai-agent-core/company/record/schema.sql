@@ -94,8 +94,10 @@ CREATE TABLE IF NOT EXISTS orders (
     deposit_amount INTEGER NOT NULL,
     pay_method    TEXT NOT NULL DEFAULT 'alipay', -- alipay/paypal/other
     deposit_status TEXT NOT NULL DEFAULT 'unpaid', -- unpaid/paid
+    deposit_ref   TEXT DEFAULT '',    -- 支付方收款单号（如 PayPal 发票 id），对账用
     balance_amount INTEGER NOT NULL DEFAULT 0,
     balance_status TEXT NOT NULL DEFAULT 'unpaid',
+    balance_ref   TEXT DEFAULT '',    -- 支付方尾款收款单号，对账用
     refund_policy_snapshot TEXT DEFAULT '{}',
     status        TEXT NOT NULL DEFAULT 'created', -- created/deposit_paid/arranged/landed/settled/cancelled
     created_at    TEXT NOT NULL

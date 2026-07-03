@@ -33,7 +33,15 @@ class Database:
         self.conn.row_factory = sqlite3.Row
         self.conn.execute("PRAGMA foreign_keys = ON")
         self.conn.executescript(_SCHEMA.read_text(encoding="utf-8"))
+        self._migrate()
         self.conn.commit()
+
+    def _migrate(self) -> None:
+        """幂等补列：老库升级到新 schema（CREATE IF NOT EXISTS 不会加新列）。"""
+        have = {r["name"] for r in self.conn.execute("PRAGMA table_info(orders)")}
+        for col in ("deposit_ref", "balance_ref"):
+            if col not in have:
+                self.conn.execute(f"ALTER TABLE orders ADD COLUMN {col} TEXT DEFAULT ''")
 
     def close(self) -> None:
         self.conn.close()

@@ -34,6 +34,14 @@ from company.roles.analytics import AnalyticsAgent
 from company.pipeline import auto_plan
 
 
+def _payment_adapter():
+    """有 PayPal 凭证 → 真 PayPal 收款（可自动对账）；否则占位（人工确认）。"""
+    if os.environ.get("PAYPAL_CLIENT_ID"):
+        from company.systems.paypal import from_env
+        return from_env()
+    return None  # CollectionAgent 默认用 StubPaymentAdapter
+
+
 # ---- 每个操作 = 一个可测函数（CLI 只是薄壳）---- #
 
 def op_intake(db: Database, fields: dict, extractor=None) -> dict:
@@ -88,7 +96,7 @@ def op_send(db: Database, quote_id: int, needs_transport: bool = True) -> dict:
     oid = db.add_order(Order(quote_id=quote_id, needs_advance_transport=needs_transport,
                              deposit_pct=pct, deposit_amount=dep,
                              balance_amount=q["quote_price"] - dep))
-    req = CollectionAgent(db).request_deposit(oid)
+    req = CollectionAgent(db, _payment_adapter()).request_deposit(oid)
     from company.roles import disclosures
     import json as _json
     commitments = _json.loads(q["commitments"] or "{}")
@@ -140,6 +148,12 @@ def op_market(db: Database) -> dict:
     return MarketingAgent(db).feedback_report()
 
 
+def op_reconcile(db: Database) -> dict:
+    """自动对账：查支付方(PayPal)权威状态，把已 PAID 的定金/尾款自动推进。
+    无 PayPal 凭证时保持人工确认（deposit/balance 命令）。"""
+    return CollectionAgent(db, _payment_adapter()).reconcile_all()
+
+
 def op_requote(db: Database, parent_quote_id: int, markup: float | None = None) -> dict:
     """二次报价（V2 低价引流→按实际需求重报）：生成父单下一版本，仍待人审后发。"""
     r = OperationsAgent(db).re_quote(parent_quote_id, markup=markup)
@@ -161,6 +175,7 @@ def main() -> int:
         p = sub.add_parser(name); p.add_argument("id", type=int)
     sub.add_parser("funnel")
     sub.add_parser("market")
+    sub.add_parser("reconcile")
     prq = sub.add_parser("requote"); prq.add_argument("parent_quote_id", type=int)
     prq.add_argument("--markup", type=float, default=None)
     args = ap.parse_args()
@@ -187,6 +202,8 @@ def main() -> int:
         out = op_funnel(db)
     elif args.cmd == "market":
         out = op_market(db)
+    elif args.cmd == "reconcile":
+        out = op_reconcile(db)
     elif args.cmd == "requote":
         out = op_requote(db, args.parent_quote_id, args.markup)
     print(json.dumps(out, ensure_ascii=False, indent=2))

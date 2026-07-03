@@ -61,6 +61,11 @@ class CollectionAgent:
             raise ValueError(f"order {order_id} 不存在")
         req = self.adapter.create_payment_request(
             o["deposit_amount"], o["pay_method"], f"订单#{order_id} {o['deposit_pct']}% 定金")
+        # 记下支付方收款单号（如 PayPal 发票 id）→ 后续可自动对账
+        if req.get("provider_ref"):
+            self.db.conn.execute("UPDATE orders SET deposit_ref=? WHERE id=?",
+                                 (req["provider_ref"], order_id))
+            self.db.conn.commit()
         return {"order_id": order_id, "kind": "deposit", **req}
 
     def confirm_deposit_paid(self, order_id: int) -> dict:
@@ -82,6 +87,10 @@ class CollectionAgent:
             raise ValueError("定金未付，不能收尾款（状态机守卫）")
         req = self.adapter.create_payment_request(
             o["balance_amount"], o["pay_method"], f"订单#{order_id} 尾款")
+        if req.get("provider_ref"):
+            self.db.conn.execute("UPDATE orders SET balance_ref=? WHERE id=?",
+                                 (req["provider_ref"], order_id))
+            self.db.conn.commit()
         return {"order_id": order_id, "kind": "balance", **req}
 
     def confirm_balance_paid(self, order_id: int) -> dict:
@@ -94,6 +103,45 @@ class CollectionAgent:
             (OrderStatus.SETTLED.value, order_id))
         self.db.conn.commit()
         return {"order_id": order_id, "status": OrderStatus.SETTLED.value}
+
+    # ---- 自动对账：读支付方权威状态，自动推进（去掉手工「确认到账」这一步）---- #
+    # §3 说明：这**不是** agent 擅自认钱——是读支付方(PayPal)自己的 PAID 记录（到账的
+    # 权威来源）来反映事实。对外承诺动作（发报价/向供应商下单）仍留人审，不受此影响。
+    def reconcile_order(self, order_id: int) -> dict:
+        """查支付方状态，若定金/尾款已 PAID 则自动推进订单。返回本次推进了什么。"""
+        check = getattr(self.adapter, "check_status", None)
+        if not callable(check):
+            return {"order_id": order_id, "advanced": [],
+                    "note": "支付适配器不支持状态查询 → 保持人工确认"}
+        o = self._order(order_id)
+        if o is None:
+            raise ValueError(f"order {order_id} 不存在")
+        advanced = []
+        # 定金
+        if o["deposit_status"] != "paid" and o["deposit_ref"]:
+            if check(o["deposit_ref"]).get("paid"):
+                self.confirm_deposit_paid(order_id)
+                advanced.append("deposit")
+                o = self._order(order_id)
+        # 尾款（须定金已付）
+        if o["deposit_status"] == "paid" and o["balance_status"] != "paid" and o["balance_ref"]:
+            if check(o["balance_ref"]).get("paid"):
+                self.confirm_balance_paid(order_id)
+                advanced.append("balance")
+        return {"order_id": order_id, "advanced": advanced}
+
+    def reconcile_all(self) -> dict:
+        """对所有「有支付方单号且未收齐」的订单跑一遍自动对账。"""
+        check = getattr(self.adapter, "check_status", None)
+        if not callable(check):
+            return {"reconciled": [], "note": "支付适配器不支持状态查询 → 全靠人工确认"}
+        rows = self.db.conn.execute(
+            "SELECT id FROM orders WHERE (deposit_status='unpaid' AND deposit_ref!='') "
+            "OR (deposit_status='paid' AND balance_status='unpaid' AND balance_ref!='')"
+        ).fetchall()
+        results = [self.reconcile_order(r["id"]) for r in rows]
+        return {"checked": len(results),
+                "reconciled": [r for r in results if r.get("advanced")]}
 
     def reconcile(self) -> dict:
         """对账：各状态订单数 + 已收/待收金额。只读。"""
