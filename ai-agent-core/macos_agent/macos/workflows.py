@@ -28,21 +28,48 @@ _FINDER_BUNDLE = "com.apple.finder"
 
 
 def _inject_text_sync(text: str) -> tuple[bool, str]:
-    """把 text 打到**当前已聚焦**的输入框（ascii 走 CGEvent，非 ascii 走剪贴板+Cmd+V）。
-    复合工具用：调用前控件已因组合键自动聚焦，无需再解析编号。"""
+    """把 text 打到**当前已聚焦**的输入框。统一走剪贴板 + Cmd+V。
+
+    真机实测（macOS Tahoe）：CGEvent 打字（type_unicode）在文档正文里能用，但在
+    保存对话框的「前往文件夹」框、Finder 新建文件夹的改名框这类**临时字段里根本不
+    生效**——文字看似发出去了却没落进框（造成假成功）。剪贴板粘贴则稳。"""
     import time as _t
     if not text:
         return True, "empty"
-    if text.isascii():
-        if not ax.type_unicode(text):
-            return False, "text injection failed"
-    else:
-        if not ax.set_clipboard(text):
-            return False, "cannot write clipboard"
-        if not ax.post_keycode(ax.KEYCODES["v"], cmd=True):
-            return False, "Cmd+V failed"
+    if not ax.set_clipboard(text):
+        return False, "cannot write clipboard"
     _t.sleep(0.1)
+    if not ax.post_keycode(ax.KEYCODES["v"], cmd=True):
+        return False, "Cmd+V failed"
+    _t.sleep(0.15)
     return True, "ok"
+
+
+def _find_elements(role: str, title=None, value=None, max_depth: int = 10) -> list:
+    """在前台 App 的窗口 + 挂在 App 层的菜单子树里，找匹配 role/title/value 的元素。
+    保存对话框的字段/按钮、弹出菜单的菜单项都靠它定位（AXPress 比发按键可靠）。"""
+    f = ax.frontmost_app()
+    if not f:
+        return []
+    app = ax.create_app_element(f[0])
+    out: list = []
+
+    def walk(el, d=0):
+        if el is None or d > max_depth:
+            return
+        if ax.copy_attr_str(el, "AXRole") == role:
+            if (title is None or ax.copy_attr_str(el, "AXTitle") == title) and \
+               (value is None or ax.copy_attr_str(el, "AXValue") == value):
+                out.append(el)
+        for c in ax.children_of(el):
+            walk(c, d + 1)
+
+    for w in (ax.copy_attr(app, "AXWindows") or []):
+        walk(w)
+    for w in ax.children_of(app):  # 弹出的菜单常挂在 App 层
+        if ax.copy_attr_str(w, "AXRole") in ("AXMenu", "AXWindow"):
+            walk(w)
+    return out
 
 
 def _wait_for_focused_role(roles: tuple[str, ...]) -> bool:
@@ -154,8 +181,91 @@ async def _do_verify_path(session, dom_state, args, planner) -> ActionResult:
     return ActionResult(ok=ok, message=msg, extracted=result)
 
 
+async def _do_save_document(session, dom_state, args, planner) -> ActionResult:
+    """工作流：把当前文档保存到 path（如 ~/Desktop/note.txt）——一步搞定保存对话框。
+
+    真机验证过的确定性流程（macOS Tahoe TextEdit）：cmd+s → 在 Save As 框粘贴文件名 →
+    在「Where」弹出里选目标文件夹（AXPress 菜单项，比发按键可靠）→ 按 Save 按钮 →
+    **落地自我核实**（probe_path 查文件真在才算成，治假成功）。
+
+    目标文件夹取 path 的父目录名，须是保存框 Where 里能选到的位置（Desktop/Documents/
+    Downloads/家目录等常用位置）；否则诚实 ok=False。可选 contains：连内容一起核实。"""
+    from macos.actions import ActionResult  # 懒加载解循环 import
+    import os
+    raw = str(args.get("path", "")).strip()
+    if not raw:
+        return ActionResult(ok=False, message="save_document failed: empty path")
+    target = os.path.expanduser(raw)
+    filename = os.path.basename(target)
+    folder_name = os.path.basename(os.path.dirname(target))
+    if not filename:
+        return ActionResult(ok=False, message="save_document failed: path 没有文件名")
+
+    def _sync() -> tuple[bool, str]:
+        import time as _t
+        ax.post_keycode(ax.KEYCODES["s"], cmd=True)
+        deadline = _t.monotonic() + FOCUS_WAIT_TIMEOUT
+        while _t.monotonic() < deadline:
+            if _find_elements("AXButton", title="Save"):
+                break
+            _t.sleep(FOCUS_POLL_INTERVAL)
+        else:
+            return False, "save_document failed: 保存对话框没出现（可能文档无需保存）"
+        _t.sleep(0.4)  # 让 Save As 框真正聚焦
+        # 文件名：cmd+a 全选整个框（默认只选中不含扩展名的部分，不全选会得到
+        # "名字.txt.txt" 这种双扩展名）→ 粘贴，替换成精确文件名
+        ax.post_keycode(ax.KEYCODES["a"], cmd=True)
+        _t.sleep(0.2)
+        ok, msg = _inject_text_sync(filename)
+        if not ok:
+            return False, f"save_document failed: 填文件名 {msg}"
+        _t.sleep(0.3)
+        # Where：若当前不在目标文件夹，就在位置弹出里选它
+        located = any(ax.copy_attr_str(p, "AXValue") == folder_name
+                      for p in _find_elements("AXPopUpButton"))
+        if not located:
+            for pop in _find_elements("AXPopUpButton"):
+                if ax.copy_attr_str(pop, "AXValue") in ("Unicode (UTF-8)", ""):
+                    continue  # 跳过编码等非位置弹出
+                ax.perform_action(pop, "AXPress")
+                _t.sleep(0.6)
+                items = _find_elements("AXMenuItem", title=folder_name)
+                if items:
+                    ax.perform_action(items[0], "AXPress")
+                    _t.sleep(0.5)
+                    located = True
+                    break
+                ax.post_keycode(ax.KEYCODES["escape"])
+                _t.sleep(0.3)
+        if not located:
+            return False, (f"save_document failed: 保存框 Where 里选不到文件夹 {folder_name!r}"
+                           "（可能不是常用位置；试试 Desktop/Documents/Downloads）")
+        saves = _find_elements("AXButton", title="Save")
+        if not saves:
+            return False, "save_document failed: 找不到 Save 按钮"
+        ax.perform_action(saves[0], "AXPress")
+        _t.sleep(1.2)
+        # 可能弹「已存在，替换?」——找 Replace 按钮按掉（没有就算了）
+        for rep in _find_elements("AXButton", title="Replace"):
+            ax.perform_action(rep, "AXPress")
+            _t.sleep(0.6)
+            break
+        return True, "save dialog driven"
+
+    ok, msg = await asyncio.to_thread(_sync)
+    if not ok:
+        return ActionResult(ok=False, message=msg)
+    # 落地自我核实：文件真在（且含 contains）才算成
+    exists, pmsg, result = await asyncio.to_thread(probe_path, target, args.get("contains"))
+    return ActionResult(ok=exists,
+                        message=(f"save_document → {pmsg}" if exists
+                                 else f"save_document：走完流程但{pmsg}（没真落盘，别当成功）"),
+                        extracted=result)
+
+
 HANDLERS = {
     "go_to_folder": _do_go_to_folder,
     "new_folder": _do_new_folder,
     "verify_path": _do_verify_path,
+    "save_document": _do_save_document,
 }

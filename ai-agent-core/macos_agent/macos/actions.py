@@ -201,16 +201,14 @@ async def _do_type(session, dom_state, args, planner) -> ActionResult:
         import time as _t
         _t.sleep(0.15)
         if text:
-            if text.isascii():
-                if not ax.type_unicode(text):
-                    return False, "type failed: CGEvent text injection failed"
-            else:
-                # 中文/非 ASCII：剪贴板 + Cmd+V（spec §6；§4A 已关跨宿主剪贴板）
-                if not ax.set_clipboard(text):
-                    return False, "type failed: cannot write clipboard"
-                if not ax.post_keycode(ax.KEYCODES["v"], cmd=True):
-                    return False, "type failed: Cmd+V post failed"
+            # 统一走剪贴板 + Cmd+V。真机实测（macOS Tahoe VM）：CGEvent 打字
+            # （type_unicode）不稳——会整段丢失，造成"存了个空文件"的假成功。粘贴稳。
+            if not ax.set_clipboard(text):
+                return False, "type failed: cannot write clipboard"
             _t.sleep(0.1)
+            if not ax.post_keycode(ax.KEYCODES["v"], cmd=True):
+                return False, "type failed: Cmd+V post failed"
+            _t.sleep(0.15)
         if submit:
             ax.post_keycode(ax.KEYCODES["return"])
         return True, f"typed {len(text)} chars" + (" + Enter" if submit else "")

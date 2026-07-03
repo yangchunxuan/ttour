@@ -72,6 +72,15 @@ ACTION_SPEC: dict[str, dict] = {
             "ok=True 表示确实存在/命中。"
         ),
     },
+    "save_document": {
+        "args": "path:str, contains?:str",
+        "required": ["path"],
+        "desc": (
+            "把当前文档一步保存到 path（如 '~/Desktop/note.txt'）：自动唤出保存框、填文件名、"
+            "在 Where 里选对文件夹、按 Save，并**落地核实文件真的存在**才返回 ok=True。"
+            "存文件就用它，别自己去点保存对话框。目标文件夹用常用位置（Desktop/Documents/Downloads）。"
+        ),
+    },
     "close_window": {
         "args": "(无)",
         "required": [],
@@ -161,17 +170,14 @@ def get_system_prompt() -> str:
 - 计算器这类应用：按钮就是控件，逐个 click 编号即可；结果显示在窗口文本里。
 - 关弹窗/菜单：press_key 'Escape'。
 
-## 存文件到指定目录（保存对话框，务必按这个顺序，别踩坑）
-关键坑：**文件名输入框里绝对不能出现斜杠 `/`**。macOS 会把文件名框里的 `/` 当成
-「前往文件夹」的触发，导致存错地方或存不成——这会造成"看起来成功、其实没存"的假成功。
-正确做法（目录和文件名分开）：
-1. press_key 'cmd+s' 唤出保存对话框。
-2. **先定目录**：优先用 go_to_folder(path='~/Desktop') 一步跳到目标目录（它内部走
-   cmd+shift+g，可靠且不会踩文件名框的坑）。若手动做，也可 press_key 'cmd+shift+g' 再 type 路径。
-3. **再填文件名**：在文件名输入框 type **只有文件名、不带任何斜杠**的名字（如 `note.txt`）。
-4. 点「存储/Save」按钮，或 press_key 'Enter' 确认。
-5. 若不需要指定目录（用默认位置就行），跳过第 2 步，直接填纯文件名再存。
-- 保存/打开对话框其余部分也是普通控件，照编号点/填即可。
+## 存文件（一步到位，别自己戳保存对话框）
+存文件**直接用 save_document(path='~/Desktop/note.txt')** —— 它会自动唤出保存框、
+填好文件名、在 Where 里选对文件夹、按 Save，并**核实文件真落盘**才算成功。
+- 存文本文件前，先在文档里把内容输好（type 到正文），再 save_document。
+- 目标目录用常用位置：~/Desktop、~/Documents、~/Downloads。
+- save_document 返回 ok=false 就是真没存成，别当成功；必要时 verify_path 再确认。
+- 别自己去在保存对话框里 type 路径/点按钮——文件名框里出现 `/` 会触发「前往文件夹」，
+  造成"看着成功其实没存"的假成功；save_document 已经把这些坑都避开了。
 
 ## 在 Finder 里新建文件夹（A4 类任务）
 1. launch_app 'Finder' 带到前台，必要时先用 go_to_folder(path=...) 跳到目标位置。

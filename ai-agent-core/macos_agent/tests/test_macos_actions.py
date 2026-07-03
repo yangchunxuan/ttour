@@ -214,10 +214,13 @@ def test_go_to_folder_workflow_sequence(monkeypatch):
                        {"name": "go_to_folder", "args": {"path": "~/Desktop"}}, None))
     assert res.ok is True
     # 精确顺序：Cmd+Shift+G 必须在 type 之前（顺序颠倒=把路径打进文件名框=A2 假成功根因）
-    assert _ops(calls) == ["key", "type", "key"]
+    # Cmd+Shift+G 必须在注入之前（顺序颠倒=把路径打进文件名框=A2 假成功根因）；
+    # 文本走剪贴板+Cmd+V（type_unicode 在临时框里不生效，真机实测）
+    assert _ops(calls) == ["key", "clip", "key", "key"]
     assert calls[0] == ("key", ax.KEYCODES["g"], True, True)
-    assert calls[1] == ("type", "~/Desktop")
-    assert calls[2] == ("key", ax.KEYCODES["return"], False, False)
+    assert calls[1] == ("clip", "~/Desktop")
+    assert calls[2] == ("key", ax.KEYCODES["v"], True, False)
+    assert calls[3] == ("key", ax.KEYCODES["return"], False, False)
 
 
 def test_new_folder_workflow_sequence(monkeypatch):
@@ -226,10 +229,11 @@ def test_new_folder_workflow_sequence(monkeypatch):
     res = _run(execute(sess, MacDomState(),
                        {"name": "new_folder", "args": {"name": "trip"}}, None))
     assert res.ok is True
-    assert _ops(calls) == ["key", "type", "key"]
+    assert _ops(calls) == ["key", "clip", "key", "key"]
     assert calls[0] == ("key", ax.KEYCODES["n"], True, True)
-    assert calls[1] == ("type", "trip")
-    assert calls[2] == ("key", ax.KEYCODES["return"], False, False)
+    assert calls[1] == ("clip", "trip")
+    assert calls[2] == ("key", ax.KEYCODES["v"], True, False)
+    assert calls[3] == ("key", ax.KEYCODES["return"], False, False)
 
 
 def test_new_folder_chinese_name_uses_clipboard(monkeypatch):
@@ -284,7 +288,8 @@ def test_go_to_folder_reports_keypost_failure(monkeypatch):
 
 
 def test_new_folder_reports_type_failure(monkeypatch):
-    ax, calls = _record_ax(monkeypatch, type_ok=False)
+    # 文本注入走剪贴板；写剪贴板失败 → 诚实 ok=False
+    ax, calls = _record_ax(monkeypatch, clip_ok=False)
     sess = _FakeSession(_fake_guard(_vm_runner))
     res = _run(execute(sess, MacDomState(), {"name": "new_folder", "args": {"name": "trip"}}, None))
     assert res.ok is False and "new_folder failed" in res.message
@@ -377,6 +382,13 @@ def test_verify_path_guarded_on_real_mac(tmp_path):
     sess = _FakeSession(_fake_guard(_real_mac_runner))
     res = _run(execute(sess, MacDomState(), {"name": "verify_path", "args": {"path": str(f)}}, None))
     assert res.ok is False
+
+
+def test_save_document_empty_path_rejected(monkeypatch):
+    _record_ax(monkeypatch)
+    sess = _FakeSession(_fake_guard(_vm_runner))
+    res = _run(execute(sess, MacDomState(), {"name": "save_document", "args": {"path": ""}}, None))
+    assert res.ok is False and "empty path" in res.message
 
 
 def test_workflows_importable_standalone():
