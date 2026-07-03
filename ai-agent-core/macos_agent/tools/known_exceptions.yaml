@@ -1,5 +1,0 @@
-# Honest ledger: every exception needs a reason and a review date.
-- invariant: INV-01
-  file: brain/agent.py
-  reason: "Copied from the web agent; A8 brain zero-regression forbids a split in this harness-only PR."
-  review_by: "2026-09-01"
